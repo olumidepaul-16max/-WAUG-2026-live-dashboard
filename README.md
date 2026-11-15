@@ -26,5 +26,4 @@ computed from the finished matches. Plus the medals each university won in that 
 
 ---
 
-Data: **AlliSports Data** — official data partner of WAUG 2026. Please credit them
-wherever you publish this.
+Data: **AlliSports Data** — official data partner of WAUG 2026.

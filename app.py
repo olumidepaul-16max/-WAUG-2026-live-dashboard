@@ -28,12 +28,13 @@ NAVY = "#0D1940"
 NAVY2 = "#2630BD"
 GOLD = "#E8B84B"
 GOLD2 = "#C4941A"
-CRIMSON = "#CE1126"
-TEAL = "#0E7C86"
-PURPLE = "#6D28D9"
-ORANGE = "#EA7317"
-INK = "#1F2937"
-MUTED = "#6B7280"
+CRIMSON = "#F0616D"
+TEAL = "#4FD1C5"
+PURPLE = "#A78BFA"
+ORANGE = "#F0A03C"
+BLUE = "#5B8DEF"
+INK = "#E2E8F7"
+MUTED = "#8FA3D4"
 
 SPORT_EMOJI = {
     "ATH": "🏃", "BDM": "🏸", "BKB": "🏀", "BOX": "🥊", "CHS": "♟️", "ESP": "🎮",
@@ -314,90 +315,104 @@ st.set_page_config(
 st.markdown("""
 <style>
 .block-container { padding-top: 1.6rem; padding-bottom: 3rem; max-width: 1400px; }
-[data-testid="stAppViewContainer"] { background: #FBFAF7; }
+[data-testid="stAppViewContainer"] { background: #0A1533; }
+[data-testid="stHeader"] { background: transparent; }
+[data-testid="stToolbar"] { background: transparent; }
 
-/* ---------- brand banner ---------- */
+/* ================= BRAND BANNER ================= */
 .brand {
     display: flex; align-items: center; gap: 20px;
-    background: linear-gradient(120deg, #0D1940 0%, #1B2C63 55%, #2630BD 100%);
-    border-radius: 16px; padding: 16px 24px; margin-bottom: 18px;
-    box-shadow: 0 10px 28px rgba(13,25,64,.22);
-    border-bottom: 5px solid #E8B84B;
+    background: linear-gradient(115deg, #0A1533 0%, #14285F 46%, #2630BD 100%);
+    border-radius: 16px; padding: 16px 24px; margin-bottom: 20px;
+    box-shadow: 0 12px 32px rgba(0,0,0,.5);
+    border-bottom: 3px solid #E8B84B;
 }
-.brand-logo { height: 66px; width: 66px; object-fit: contain; flex: 0 0 auto;
-              filter: drop-shadow(0 2px 6px rgba(0,0,0,.35)); }
-.brand-text { flex: 1 1 auto; min-width: 0; color: #fff; }
-.brand-text h1 { color:#fff; font-size:1.32rem; font-weight:800; margin:0; line-height:1.25; letter-spacing:-.3px; }
-.brand-text p  { color:#E8B84B; margin:3px 0 0; font-size:.82rem; font-weight:600; }
-.brand-text small { color:#B9C2DE; font-size:.72rem; }
-.brand-oau { height: 52px; width: auto; object-fit: contain; flex: 0 0 auto;
+.brand-logo { height: 64px; width: 64px; object-fit: contain; flex: 0 0 auto;
+              filter: drop-shadow(0 2px 8px rgba(0,0,0,.55)); }
+.brand-text { flex: 1 1 auto; min-width: 0; }
+.brand-text h1 { color:#fff; font-size:1.34rem; font-weight:800; margin:0; line-height:1.25; letter-spacing:-.3px; }
+.brand-text p  { color:#E8B84B; margin:4px 0 0; font-size:.83rem; font-weight:600; }
+.brand-text small { color:#8FA3D4; font-size:.73rem; }
+.brand-oau { height: 54px; width: auto; object-fit: contain; flex: 0 0 auto;
              background:#fff; padding:5px; border-radius:10px; }
-.brand-mascot { height: 62px; width: auto; object-fit: contain; flex: 0 0 auto; }
+.brand-mascot { height: 60px; width: auto; object-fit: contain; flex: 0 0 auto; }
 
-/* ---------- section title ---------- */
-.sport-head { display:flex; align-items:center; gap:16px; margin: 6px 0 12px; }
+/* ================= SPORT HEADER ================= */
+.sport-head { display:flex; align-items:center; gap:16px; margin: 4px 0 12px; }
 .sport-emoji { font-size:2.2rem; line-height:1.1; }
-.sport-head h2 { color:#0D1940; font-size:1.85rem; font-weight:800; margin:0; letter-spacing:-.4px; }
-.sport-head .rule { height:4px; width:70px; background:#E8B84B; border-radius:3px; margin-top:6px; }
-.sport-head .meta { color:#6B7280; font-size:.85rem; font-weight:600; margin-left:auto; text-align:right; }
+.sport-head h2 { color:#fff; font-size:1.8rem; font-weight:800; margin:0; letter-spacing:-.4px; }
+.sport-head .rule { height:3px; width:64px; background:#E8B84B; border-radius:2px; margin-top:7px; }
+.sport-head .meta { color:#8FA3D4; font-size:.84rem; font-weight:600; margin-left:auto; text-align:right; }
+.sport-banner { border-radius: 12px; overflow: hidden; border: 1px solid rgba(232,184,75,.22);
+                box-shadow: 0 8px 24px rgba(0,0,0,.4); margin-bottom: 6px; }
+.sport-banner img { display:block; width:100%; }
+.gold-rule { height:3px; background:linear-gradient(90deg,#E8B84B 0%, rgba(232,184,75,0) 70%);
+             border-radius:2px; margin: 0 0 20px; }
 
-/* ---------- cards ---------- */
+/* ================= CARDS ================= */
 .card {
-    background:#fff; border:1px solid #EDE9E0; border-radius:14px;
-    padding:20px 22px; margin-bottom:16px;
-    box-shadow:0 2px 10px rgba(13,25,64,.05);
-    border-top:4px solid #E8B84B;
+    background: rgba(255,255,255,.035);
+    border: 1px solid rgba(232,184,75,.16);
+    border-radius: 14px; padding: 20px 22px; margin-bottom: 16px;
+    box-shadow: 0 2px 14px rgba(0,0,0,.28);
 }
 .card-title {
-    font-size:.76rem; font-weight:800; letter-spacing:1.7px; text-transform:uppercase;
-    color:#0D1940; margin-bottom:14px; display:flex; align-items:center; gap:8px;
+    font-size:.75rem; font-weight:800; letter-spacing:1.7px; text-transform:uppercase;
+    color:#E8B84B; margin-bottom:14px; display:flex; align-items:center; gap:9px;
 }
-.card-title::before { content:""; width:10px; height:10px; border-radius:3px; background:#E8B84B; display:inline-block; }
-.card-title.navy::before { background:#0D1940; }
-.card-title.crimson::before { background:#CE1126; }
-.card-title.teal::before { background:#0E7C86; }
+.card-title::before { content:""; width:9px; height:9px; border-radius:2px; background:#E8B84B; flex:0 0 auto; }
+.card-title.navy::before   { background:#5B8DEF; }
+.card-title.crimson::before { background:#F0616D; }
+.card-title.teal::before    { background:#4FD1C5; }
 
-/* ---------- metrics ---------- */
+/* ================= METRICS ================= */
 [data-testid="stMetric"] {
-    background:#fff; border:1px solid #EDE9E0; border-top:4px solid #E8B84B;
-    border-radius:14px; padding:16px 18px;
-    box-shadow:0 2px 10px rgba(13,25,64,.05);
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(232,184,75,.18);
+    border-left: 3px solid #E8B84B;
+    border-radius: 12px; padding: 15px 18px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.28);
 }
-[data-testid="stMetricValue"] { color:#0D1940 !important; font-weight:800 !important; font-size:1.9rem !important; }
-[data-testid="stMetricLabel"] { color:#6B7280 !important; font-weight:700 !important; font-size:.8rem !important; text-transform:uppercase; letter-spacing:.6px; }
-[data-testid="stMetricDelta"] { color:#0E7C86 !important; font-weight:700 !important; }
+[data-testid="stMetricValue"] { color:#fff !important; font-weight:800 !important; font-size:1.85rem !important; }
+[data-testid="stMetricLabel"] { color:#8FA3D4 !important; font-weight:700 !important; font-size:.78rem !important;
+                                text-transform:uppercase; letter-spacing:.7px; }
+[data-testid="stMetricDelta"] { color:#E8B84B !important; font-weight:700 !important; }
 
-/* ---------- tabs ---------- */
-.stTabs [data-baseweb="tab-list"] { gap:6px; border-bottom:2px solid #EDE9E0; padding-bottom:0; }
+/* ================= TABS ================= */
+.stTabs [data-baseweb="tab-list"] { gap:6px; border-bottom:1px solid rgba(232,184,75,.16); padding-bottom:0; }
 .stTabs [data-baseweb="tab"] {
-    background:#fff; color:#0D1940; border-radius:10px 10px 0 0; padding:10px 20px;
-    font-weight:700; font-size:.92rem; border:1px solid #EDE9E0; border-bottom:none;
+    background: rgba(255,255,255,.045); color:#C3CFF0; border-radius:10px 10px 0 0; padding:10px 20px;
+    font-weight:700; font-size:.91rem; border:1px solid rgba(255,255,255,.08); border-bottom:none;
 }
-.stTabs [data-baseweb="tab"]:hover { background:#F6F3EC; }
+.stTabs [data-baseweb="tab"]:hover { background: rgba(38,48,189,.22); color:#fff; }
 .stTabs [data-baseweb="tab"][aria-selected="true"] {
-    background:#0D1940 !important; color:#fff !important; border-color:#0D1940;
+    background:#14285F !important; color:#fff !important;
+    border-color:rgba(232,184,75,.45); box-shadow: inset 0 -3px 0 #E8B84B;
 }
 
-/* ---------- tables ---------- */
-[data-testid="stDataFrame"] { border-radius:12px; border:1px solid #EDE9E0; }
-[data-testid="stDataFrame"] thead th { background:#0D1940 !important; color:#fff !important; }
+/* ================= TABLES ================= */
+[data-testid="stDataFrame"] { border-radius:12px; border:1px solid rgba(232,184,75,.16); overflow:hidden; }
+[data-testid="stDataFrame"] thead th { background:#14285F !important; color:#E8B84B !important; }
 
-/* ---------- sidebar ---------- */
-[data-testid="stSidebar"] { border-right:1px solid #EDE9E0; }
+/* ================= SIDEBAR ================= */
+[data-testid="stSidebar"] { background:#0D1940; border-right:1px solid rgba(232,184,75,.16); }
 [data-testid="stSidebar"] .block-container { padding-top:1.2rem; }
+[data-testid="stSidebar"] * { color:#E2E8F7; }
 .side-logo { display:flex; align-items:center; gap:10px; margin-bottom:6px; }
-.side-logo img { height:42px; }
-.side-cap { color:#6B7280; font-size:.76rem; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; margin:16px 0 6px; }
+.side-logo img { height:42px; width:42px; object-fit:contain; filter:drop-shadow(0 2px 6px rgba(0,0,0,.5)); }
+.side-cap { color:#E8B84B; font-size:.72rem; font-weight:800; text-transform:uppercase; letter-spacing:1.3px; margin:16px 0 6px; }
 
-/* ---------- misc ---------- */
+/* ================= MISC ================= */
 .live-pill {
-    display:inline-flex; align-items:center; gap:8px; background:#FEF2F2; color:#CE1126;
-    border:1px solid #FCA5A5; border-radius:999px; padding:5px 14px; font-weight:700; font-size:.82rem;
+    display:inline-flex; align-items:center; gap:8px; background:rgba(206,17,38,.16); color:#FF8A94;
+    border:1px solid rgba(206,17,38,.45); border-radius:999px; padding:5px 14px; font-weight:700; font-size:.82rem;
 }
-.live-dot { width:9px; height:9px; border-radius:50%; background:#CE1126; animation:pulse 1.3s infinite; }
+.live-dot { width:9px; height:9px; border-radius:50%; background:#F0616D; animation:pulse 1.3s infinite; }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.25} }
-.foot { text-align:center; color:#6B7280; font-size:.82rem; padding:18px 0 4px; border-top:1px solid #EDE9E0; margin-top:26px; }
-hr.rule-line { border:none; border-top:1px solid #EDE9E0; margin:22px 0; }
+.foot { text-align:center; color:#7C8DBB; font-size:.82rem; padding:20px 0 4px;
+        border-top:1px solid rgba(232,184,75,.16); margin-top:26px; }
+.foot b { color:#E8B84B; }
+hr.rule-line { border:none; border-top:1px solid rgba(232,184,75,.14); margin:18px 0; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -411,13 +426,15 @@ def badge_col(label, options=None):
 def style_chart(fig, title=None, height=380, y_title=None, legend=True):
     fig.update_layout(
         plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
-        font_color="#4B5563", title_font_color="#0D1940", title_font_size=16,
+        font_color="#B9C6E8", title_font_color="#E8B84B", title_font_size=15,
         margin=dict(t=62 if title else 30, b=40, l=50, r=20), height=height,
-        hoverlabel=dict(bgcolor="#0D1940", font_color="#FFFFFF", bordercolor="#E8B84B"),
-        legend=dict(bgcolor="rgba(0,0,0,0)", font_color="#4B5563",
+        hoverlabel=dict(bgcolor="#14285F", font_color="#FFFFFF", bordercolor="#E8B84B"),
+        legend=dict(bgcolor="rgba(0,0,0,0)", font_color="#B9C6E8",
                     orientation="h", yanchor="bottom", y=1.02),
-        xaxis=dict(gridcolor="#F0EDE5", zerolinecolor="#F0EDE5", linecolor="#DDD8CC"),
-        yaxis=dict(gridcolor="#F0EDE5", zerolinecolor="#F0EDE5", linecolor="#DDD8CC", title=y_title),
+        xaxis=dict(gridcolor="rgba(255,255,255,.07)", zerolinecolor="rgba(255,255,255,.07)",
+                   linecolor="rgba(255,255,255,.14)", tickfont_color="#B9C6E8"),
+        yaxis=dict(gridcolor="rgba(255,255,255,.07)", zerolinecolor="rgba(255,255,255,.07)",
+                   linecolor="rgba(255,255,255,.14)", tickfont_color="#B9C6E8", title=y_title),
         bargap=0.35, showlegend=legend,
     )
     if title:
@@ -496,7 +513,7 @@ st.sidebar.markdown(
 )
 
 st.sidebar.markdown('<hr class="rule-line">', unsafe_allow_html=True)
-if st.sidebar.button("🔄  Refresh feed", use_container_width=True, type="primary"):
+if st.sidebar.button("🔄  Refresh feed", use_container_width=True):
     load_core.clear(); api_get.clear()
     get_competition.clear(); get_analytics.clear()
     st.rerun()
@@ -569,6 +586,7 @@ st.markdown(f"""
 banner = asset("sport", f"{selected_code}.jpg")
 if banner:
     st.image(banner, use_container_width=True)
+    st.markdown('<div class="gold-rule"></div>', unsafe_allow_html=True)
 
 tabs = st.tabs(["🔴 Live & Fixtures", "🏅 Results & Medals", "📊 Standings", "📈 Statistics"])
 

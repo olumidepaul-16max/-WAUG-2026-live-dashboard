@@ -1,13 +1,12 @@
 """
 WAUG 2026 Live Sports Dashboard  —  Obafemi Awolowo University, Ile-Ife
 Powered by the AlliSports Data API (data.allimediahub.com)
-
-The API key lives on the server (Streamlit Cloud / your machine) and is sent in the
-`x-api-key` header. It is never exposed to the browser.
+The API key lives on the server and is sent in the `x-api-key` header.
 """
 
 import os
-from datetime import datetime, timezone
+from datetime import datetime
+from pathlib import Path
 
 import pandas as pd
 import plotly.express as px
@@ -20,9 +19,21 @@ import streamlit as st
 API_BASE = "https://data.allimediahub.com/api"
 SERIES = "waug"
 EDITION = "2026"
-
-# Fallback key: set via Streamlit Cloud secrets (ALLISPORTS_KEY), an env var, or here.
 FALLBACK_KEY = "asd_4zqyjoayTzsKxPi1YpjND3bstQ3v-44J"
+
+HERE = Path(__file__).parent
+ASSETS = HERE / "assets"
+
+NAVY = "#0D1940"
+NAVY2 = "#2630BD"
+GOLD = "#E8B84B"
+GOLD2 = "#C4941A"
+CRIMSON = "#CE1126"
+TEAL = "#0E7C86"
+PURPLE = "#6D28D9"
+ORANGE = "#EA7317"
+INK = "#1F2937"
+MUTED = "#6B7280"
 
 SPORT_EMOJI = {
     "ATH": "🏃", "BDM": "🏸", "BKB": "🏀", "BOX": "🥊", "CHS": "♟️", "ESP": "🎮",
@@ -32,20 +43,32 @@ SPORT_EMOJI = {
 }
 
 STATUS_STYLE = {
-    "finished": "Completed",
-    "live": "🔴 LIVE",
-    "scheduled": "Scheduled",
-    "postponed": "Postponed",
-    "cancelled": "Cancelled",
-    "abandoned": "Abandoned",
+    "finished": "Completed", "live": "🔴 LIVE", "scheduled": "Scheduled",
+    "postponed": "Postponed", "cancelled": "Cancelled", "abandoned": "Abandoned",
 }
 
 
+def asset(*parts) -> str:
+    p = ASSETS.joinpath(*parts)
+    return str(p) if p.exists() else ""
+
+
+@st.cache_data(show_spinner=False)
+def data_uri(path: str) -> str:
+    """Base64-encode an image so it can be embedded inside raw HTML."""
+    if not path or not os.path.exists(path):
+        return ""
+    import base64
+    ext = Path(path).suffix.lower()
+    mime = "image/png" if ext == ".png" else "image/jpeg"
+    with open(path, "rb") as fh:
+        return f"data:{mime};base64,{base64.b64encode(fh.read()).decode()}"
+
+
 # ============================================================
-# API KEY RESOLUTION
+# API KEY
 # ============================================================
 def get_api_key() -> str:
-    """Resolve the API key from Streamlit secrets, env vars, or the local fallback."""
     try:
         return st.secrets["ALLISPORTS_KEY"]
     except Exception:
@@ -58,7 +81,6 @@ def get_api_key() -> str:
 # ============================================================
 @st.cache_data(ttl=45, show_spinner=False)
 def api_get(path: str):
-    """GET a feed endpoint from the server. Returns dict, or {'__error__': ...}."""
     key = get_api_key()
     url = f"{API_BASE}/{SERIES}/{EDITION}{path}"
     try:
@@ -78,7 +100,6 @@ def api_get(path: str):
 
 @st.cache_data(ttl=45, show_spinner=False)
 def api_get_path(full_path: str):
-    """GET an endpoint relative to the edition (e.g. /events/{id}/competition)."""
     key = get_api_key()
     url = f"{API_BASE}/{SERIES}/{EDITION}{full_path}"
     try:
@@ -96,7 +117,6 @@ def api_get_path(full_path: str):
 # ============================================================
 @st.cache_data(ttl=45, show_spinner=False)
 def load_core():
-    """Fetch the four headline feeds and flatten them into DataFrames."""
     sports_raw = api_get("/sports")
     if "__error__" in sports_raw:
         return {"error": sports_raw["__error__"]}
@@ -106,12 +126,10 @@ def load_core():
     matches_raw = api_get("/matches")
     unis_raw = api_get("/universities")
 
-    # --- sports ---
     sports_df = pd.DataFrame(sports_raw.get("data", []))
     if not sports_df.empty:
         sports_df["emoji"] = sports_df["code"].map(SPORT_EMOJI).fillna("🏅")
 
-    # --- medal table ---
     rows = (medal_raw.get("data") or {}).get("rows", []) if "__error__" not in medal_raw else []
     medal_df = pd.DataFrame([
         {
@@ -127,7 +145,6 @@ def load_core():
         for r in rows
     ])
 
-    # --- matches ---
     mrows = []
     for m in (matches_raw.get("data") or {}).get("matches", []):
         sc = m.get("score") or {}
@@ -137,7 +154,6 @@ def load_core():
             score_txt += f" ({pen.get('home')}-{pen.get('away')} pen)"
         mrows.append({
             "id": m["id"],
-            "eventId": m.get("eventId"),
             "Sport": m.get("sport"),
             "Event": m.get("event"),
             "Phase": m.get("phase"),
@@ -156,7 +172,6 @@ def load_core():
         })
     matches_df = pd.DataFrame(mrows)
 
-    # --- results / medal winners ---
     rrows = []
     for r in (results_raw.get("data") or []):
         result = r.get("result") or {}
@@ -185,14 +200,11 @@ def load_core():
         })
     results_df = pd.DataFrame(rrows)
 
-    # --- universities ---
     uitems = unis_raw.get("data") if isinstance(unis_raw.get("data"), list) else \
         (unis_raw.get("data") or {}).get("universities", [])
     unis_df = pd.DataFrame([
         {
-            "Code": u["code"],
-            "University": u["name"],
-            "Country": u.get("country"),
+            "Code": u["code"], "University": u["name"], "Country": u.get("country"),
             "Gold": u.get("medals", {}).get("gold", 0),
             "Silver": u.get("medals", {}).get("silver", 0),
             "Bronze": u.get("medals", {}).get("bronze", 0),
@@ -205,11 +217,8 @@ def load_core():
         "error": None,
         "generatedAt": sports_raw.get("generatedAt"),
         "includesProvisional": sports_raw.get("includesProvisional"),
-        "sports": sports_df,
-        "medal": medal_df,
-        "matches": matches_df,
-        "results": results_df,
-        "universities": unis_df,
+        "sports": sports_df, "medal": medal_df, "matches": matches_df,
+        "results": results_df, "universities": unis_df,
         "medal_totals": (medal_raw.get("data") or {}).get("totals", {}),
         "medal_status": (medal_raw.get("data") or {}).get("status", ""),
     }
@@ -217,15 +226,11 @@ def load_core():
 
 @st.cache_data(ttl=90, show_spinner=False)
 def get_competition(sport_code: str):
-    """Group tables + knockout rounds for a tournament event of the given sport."""
     ev = api_get("/events")
     if "__error__" in ev:
         return None
-    events = ev.get("data", [])
-    cands = [
-        e for e in events
-        if e["sport"]["code"] == sport_code and e.get("kind") == "team"
-    ]
+    cands = [e for e in ev.get("data", [])
+             if e["sport"]["code"] == sport_code and e.get("kind") == "team"]
     if not cands:
         return None
     for e in cands:
@@ -240,18 +245,24 @@ def get_competition(sport_code: str):
 
 @st.cache_data(ttl=90, show_spinner=False)
 def get_sport_events(sport_code: str):
-    """All events of a sport (used to tell team tournaments from individual events)."""
     ev = api_get("/events")
     if "__error__" in ev:
         return []
     return [e for e in ev.get("data", []) if e["sport"]["code"] == sport_code]
 
 
+@st.cache_data(ttl=90, show_spinner=False)
+def get_analytics(match_id: str):
+    resp = api_get_path(f"/matches/{match_id}/analytics")
+    if "__error__" in resp:
+        return None
+    return resp.get("data")
+
+
 def derive_standings(matches_df: pd.DataFrame) -> pd.DataFrame:
     """Build a league table from finished matches when the feed has no published groups."""
     if matches_df is None or matches_df.empty:
         return pd.DataFrame()
-
     table: dict = {}
 
     def slot(name):
@@ -283,7 +294,6 @@ def derive_standings(matches_df: pd.DataFrame) -> pd.DataFrame:
 
     if not table:
         return pd.DataFrame()
-
     df = pd.DataFrame(list(table.values()))
     df["GD"] = df["GF"] - df["GA"]
     df = df.sort_values(["Pts", "GD", "GF"], ascending=False).reset_index(drop=True)
@@ -291,17 +301,8 @@ def derive_standings(matches_df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-@st.cache_data(ttl=90, show_spinner=False)
-def get_analytics(match_id: str):
-    """Narrative analytics for one match."""
-    resp = api_get_path(f"/matches/{match_id}/analytics")
-    if "__error__" in resp:
-        return None
-    return resp.get("data")
-
-
 # ============================================================
-# PAGE SETUP + THEME
+# PAGE SETUP
 # ============================================================
 st.set_page_config(
     page_title="WAUG 2026 Live Dashboard",
@@ -312,40 +313,96 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-.hero {
-    background: linear-gradient(135deg, #7A0016 0%, #50000E 55%, #0B1220 100%);
-    border-left: 6px solid #FACC15;
-    border-radius: 14px;
-    padding: 28px 36px;
-    margin-bottom: 24px;
-    box-shadow: 0 8px 24px rgba(0,0,0,.35);
+.block-container { padding-top: 1.6rem; padding-bottom: 3rem; max-width: 1400px; }
+[data-testid="stAppViewContainer"] { background: #FBFAF7; }
+
+/* ---------- brand banner ---------- */
+.brand {
+    display: flex; align-items: center; gap: 20px;
+    background: linear-gradient(120deg, #0D1940 0%, #1B2C63 55%, #2630BD 100%);
+    border-radius: 16px; padding: 16px 24px; margin-bottom: 18px;
+    box-shadow: 0 10px 28px rgba(13,25,64,.22);
+    border-bottom: 5px solid #E8B84B;
 }
-.hero-badge {
-    display: inline-block; background: #FACC15; color: #0B1220;
-    font-weight: 800; font-size: .72rem; letter-spacing: 2px; text-transform: uppercase;
-    padding: 5px 14px; border-radius: 999px; margin-bottom: 12px;
+.brand-logo { height: 66px; width: 66px; object-fit: contain; flex: 0 0 auto;
+              filter: drop-shadow(0 2px 6px rgba(0,0,0,.35)); }
+.brand-text { flex: 1 1 auto; min-width: 0; color: #fff; }
+.brand-text h1 { color:#fff; font-size:1.32rem; font-weight:800; margin:0; line-height:1.25; letter-spacing:-.3px; }
+.brand-text p  { color:#E8B84B; margin:3px 0 0; font-size:.82rem; font-weight:600; }
+.brand-text small { color:#B9C2DE; font-size:.72rem; }
+.brand-oau { height: 52px; width: auto; object-fit: contain; flex: 0 0 auto;
+             background:#fff; padding:5px; border-radius:10px; }
+.brand-mascot { height: 62px; width: auto; object-fit: contain; flex: 0 0 auto; }
+
+/* ---------- section title ---------- */
+.sport-head { display:flex; align-items:center; gap:16px; margin: 6px 0 12px; }
+.sport-emoji { font-size:2.2rem; line-height:1.1; }
+.sport-head h2 { color:#0D1940; font-size:1.85rem; font-weight:800; margin:0; letter-spacing:-.4px; }
+.sport-head .rule { height:4px; width:70px; background:#E8B84B; border-radius:3px; margin-top:6px; }
+.sport-head .meta { color:#6B7280; font-size:.85rem; font-weight:600; margin-left:auto; text-align:right; }
+
+/* ---------- cards ---------- */
+.card {
+    background:#fff; border:1px solid #EDE9E0; border-radius:14px;
+    padding:20px 22px; margin-bottom:16px;
+    box-shadow:0 2px 10px rgba(13,25,64,.05);
+    border-top:4px solid #E8B84B;
 }
-.hero h1 { color:#FFFFFF; font-size:2.2rem; font-weight:800; letter-spacing:-.5px; margin:0 0 6px 0; line-height:1.15; }
-.hero p { color:#FACC15; font-size:1rem; font-weight:500; margin:0; }
-.hero .hero-sub { color:#CBD5E1; font-size:.88rem; font-weight:400; margin-top:10px; }
-.card-label { font-size:.78rem; font-weight:800; letter-spacing:1.6px; text-transform:uppercase; color:#FACC15; margin-bottom:12px; }
-.stTabs [data-baseweb="tab-list"] { gap:8px; border-bottom:2px solid #243049; padding-bottom:8px; }
-.stTabs [data-baseweb="tab"] { background-color:#16213A; border-radius:10px; padding:10px 20px; font-weight:700; font-size:.92rem; }
-.stTabs [data-baseweb="tab"]:hover { background-color:#1F2D4A; }
-.stTabs [data-baseweb="tab"][aria-selected="true"] { background-color:#FACC15 !important; color:#0B1220 !important; }
-[data-testid="stMetricValue"] { color:#FACC15 !important; font-weight:800 !important; }
-[data-testid="stMetricLabel"] { color:#94A3B8 !important; font-weight:700 !important; }
-[data-testid="stMetricDelta"] { color:#4ADE80 !important; font-weight:600 !important; }
-[data-testid="stDataFrame"] { border-radius:10px; }
-[data-testid="stSidebar"] { border-right:2px solid #243049; }
-.live-dot { display:inline-block; width:9px; height:9px; border-radius:50%; background:#EF4444; margin-right:7px; animation:pulse 1.4s infinite; }
+.card-title {
+    font-size:.76rem; font-weight:800; letter-spacing:1.7px; text-transform:uppercase;
+    color:#0D1940; margin-bottom:14px; display:flex; align-items:center; gap:8px;
+}
+.card-title::before { content:""; width:10px; height:10px; border-radius:3px; background:#E8B84B; display:inline-block; }
+.card-title.navy::before { background:#0D1940; }
+.card-title.crimson::before { background:#CE1126; }
+.card-title.teal::before { background:#0E7C86; }
+
+/* ---------- metrics ---------- */
+[data-testid="stMetric"] {
+    background:#fff; border:1px solid #EDE9E0; border-top:4px solid #E8B84B;
+    border-radius:14px; padding:16px 18px;
+    box-shadow:0 2px 10px rgba(13,25,64,.05);
+}
+[data-testid="stMetricValue"] { color:#0D1940 !important; font-weight:800 !important; font-size:1.9rem !important; }
+[data-testid="stMetricLabel"] { color:#6B7280 !important; font-weight:700 !important; font-size:.8rem !important; text-transform:uppercase; letter-spacing:.6px; }
+[data-testid="stMetricDelta"] { color:#0E7C86 !important; font-weight:700 !important; }
+
+/* ---------- tabs ---------- */
+.stTabs [data-baseweb="tab-list"] { gap:6px; border-bottom:2px solid #EDE9E0; padding-bottom:0; }
+.stTabs [data-baseweb="tab"] {
+    background:#fff; color:#0D1940; border-radius:10px 10px 0 0; padding:10px 20px;
+    font-weight:700; font-size:.92rem; border:1px solid #EDE9E0; border-bottom:none;
+}
+.stTabs [data-baseweb="tab"]:hover { background:#F6F3EC; }
+.stTabs [data-baseweb="tab"][aria-selected="true"] {
+    background:#0D1940 !important; color:#fff !important; border-color:#0D1940;
+}
+
+/* ---------- tables ---------- */
+[data-testid="stDataFrame"] { border-radius:12px; border:1px solid #EDE9E0; }
+[data-testid="stDataFrame"] thead th { background:#0D1940 !important; color:#fff !important; }
+
+/* ---------- sidebar ---------- */
+[data-testid="stSidebar"] { border-right:1px solid #EDE9E0; }
+[data-testid="stSidebar"] .block-container { padding-top:1.2rem; }
+.side-logo { display:flex; align-items:center; gap:10px; margin-bottom:6px; }
+.side-logo img { height:42px; }
+.side-cap { color:#6B7280; font-size:.76rem; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; margin:16px 0 6px; }
+
+/* ---------- misc ---------- */
+.live-pill {
+    display:inline-flex; align-items:center; gap:8px; background:#FEF2F2; color:#CE1126;
+    border:1px solid #FCA5A5; border-radius:999px; padding:5px 14px; font-weight:700; font-size:.82rem;
+}
+.live-dot { width:9px; height:9px; border-radius:50%; background:#CE1126; animation:pulse 1.3s infinite; }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.25} }
+.foot { text-align:center; color:#6B7280; font-size:.82rem; padding:18px 0 4px; border-top:1px solid #EDE9E0; margin-top:26px; }
+hr.rule-line { border:none; border-top:1px solid #EDE9E0; margin:22px 0; }
 </style>
 """, unsafe_allow_html=True)
 
 
 def badge_col(label, options=None):
-    """BadgeColumn on Streamlit >= 1.44, otherwise a plain TextColumn."""
     if hasattr(st.column_config, "BadgeColumn"):
         return st.column_config.BadgeColumn(label, options=options, format="%s")
     return st.column_config.TextColumn(label)
@@ -353,31 +410,20 @@ def badge_col(label, options=None):
 
 def style_chart(fig, title=None, height=380, y_title=None, legend=True):
     fig.update_layout(
-        plot_bgcolor="rgba(0,0,0,0)",
-        paper_bgcolor="rgba(0,0,0,0)",
-        font_color="#CBD5E1",
-        title_font_color="#FACC15",
-        title_font_size=16,
-        margin=dict(t=60 if title else 30, b=40, l=50, r=20),
-        height=height,
-        hoverlabel=dict(bgcolor="#16213A", font_color="#FFFFFF", bordercolor="#FACC15"),
-        legend=dict(bgcolor="rgba(0,0,0,0)", font_color="#CBD5E1", orientation="h", yanchor="bottom", y=1.02),
-        xaxis=dict(gridcolor="#243049", zerolinecolor="#243049", linecolor="#334155"),
-        yaxis=dict(gridcolor="#243049", zerolinecolor="#243049", linecolor="#334155", title=y_title),
-        bargap=0.35,
-        showlegend=legend,
+        plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
+        font_color="#4B5563", title_font_color="#0D1940", title_font_size=16,
+        margin=dict(t=62 if title else 30, b=40, l=50, r=20), height=height,
+        hoverlabel=dict(bgcolor="#0D1940", font_color="#FFFFFF", bordercolor="#E8B84B"),
+        legend=dict(bgcolor="rgba(0,0,0,0)", font_color="#4B5563",
+                    orientation="h", yanchor="bottom", y=1.02),
+        xaxis=dict(gridcolor="#F0EDE5", zerolinecolor="#F0EDE5", linecolor="#DDD8CC"),
+        yaxis=dict(gridcolor="#F0EDE5", zerolinecolor="#F0EDE5", linecolor="#DDD8CC", title=y_title),
+        bargap=0.35, showlegend=legend,
     )
     if title:
         fig.update_layout(title=dict(text=title, x=0.5, xanchor="center"))
     return fig
 
-
-GOLD = "#FACC15"
-CRIMSON = "#E11D48"
-NAVY = "#38BDF8"
-GREEN = "#4ADE80"
-GREY = "#94A3B8"
-PURPLE = "#A78BFA"
 
 # ============================================================
 # LOAD DATA
@@ -387,79 +433,81 @@ with st.spinner("Connecting to the AlliSports feed…"):
 
 if CORE.get("error"):
     st.error(f"⚠️ Could not reach the AlliSports feed: {CORE['error']}")
-    st.caption("The API key is read from Streamlit secrets (ALLISPORTS_KEY). "
-               "Check your `.streamlit/secrets.toml` or Streamlit Cloud secrets.")
+    st.caption("The feed key is read from Streamlit secrets (ALLISPORTS_KEY).")
     st.stop()
 
 SPORTS = CORE["sports"]
 MATCHES = CORE["matches"]
 RESULTS = CORE["results"]
 MEDALS = CORE["medal"]
-UNIS = CORE["universities"]
 
 sports_map = dict(zip(SPORTS["code"], SPORTS["name"])) if not SPORTS.empty else {}
 sports_events = dict(zip(SPORTS["code"], SPORTS["events"])) if not SPORTS.empty else {}
+code_list = list(SPORTS["code"]) if not SPORTS.empty else []
+
+live_total = int((MATCHES["raw_status"] == "live").sum()) if not MATCHES.empty else 0
+finished_total = int((MATCHES["raw_status"] == "finished").sum()) if not MATCHES.empty else 0
 
 # ============================================================
 # SIDEBAR
 # ============================================================
-st.sidebar.image("https://img.icons8.com/color/96/trophy.png", width=66)
-st.sidebar.markdown("### 🏆 WAUG 2026")
-st.sidebar.caption("*Live data · AlliSports Data feed*")
-
-code_list = list(SPORTS["code"]) if not SPORTS.empty else []
+st.sidebar.markdown(
+    f'<div class="side-logo"><img src="{data_uri(asset("inline", "logo-waug.png"))}"></div>',
+    unsafe_allow_html=True,
+)
+st.sidebar.markdown("**WAUG 2026**")
+st.sidebar.caption("West African University Games · OAU, Ile-Ife")
+st.sidebar.markdown('<hr class="rule-line">', unsafe_allow_html=True)
+st.sidebar.markdown('<div class="side-cap">Choose a sport</div>', unsafe_allow_html=True)
 
 
 def sport_label(code: str) -> str:
-    n = sports_map.get(code, code)
-    ev = sports_events.get(code, 0)
-    return f"{SPORT_EMOJI.get(code, '🏅')} {n} ({ev})"
+    return f"{SPORT_EMOJI.get(code, '🏅')}  {sports_map.get(code, code)}"
 
 
 def _sync_sport_query():
-    """Keep ?sport= in the URL so a sport view can be shared as a link."""
     try:
         st.query_params["sport"] = st.session_state.get("sport_pick", "")
     except Exception:
         pass
 
 
-# A ?sport=CODE URL deep-link wins over the widget's stored value.
 qp = st.query_params.get("sport", "")
 if qp in code_list:
     st.session_state["sport_pick"] = qp
 
 selected_code = st.sidebar.selectbox(
-    "Select Sport", code_list, format_func=sport_label,
-    key="sport_pick", on_change=_sync_sport_query,
+    "Sport", code_list, format_func=sport_label,
+    key="sport_pick", on_change=_sync_sport_query, label_visibility="collapsed",
 )
-
 if st.query_params.get("sport", "") != selected_code:
     try:
         st.query_params["sport"] = selected_code
     except Exception:
         pass
 
-st.sidebar.markdown("---")
+thumb = asset("thumb", f"{selected_code}.jpg")
+if thumb:
+    st.sidebar.image(thumb, use_container_width=True)
+st.sidebar.markdown(
+    f'<div style="text-align:center;font-weight:700;color:#0D1940;margin-top:-6px;">'
+    f'{SPORT_EMOJI.get(selected_code, "🏅")} {sports_map.get(selected_code, selected_code)}</div>',
+    unsafe_allow_html=True,
+)
 
-if st.sidebar.button("🔄 Refresh now", use_container_width=True):
-    load_core.clear()
-    api_get.clear()
-    get_competition.clear()
-    get_analytics.clear()
+st.sidebar.markdown('<hr class="rule-line">', unsafe_allow_html=True)
+if st.sidebar.button("🔄  Refresh feed", use_container_width=True, type="primary"):
+    load_core.clear(); api_get.clear()
+    get_competition.clear(); get_analytics.clear()
     st.rerun()
 
-live_count = int((MATCHES["raw_status"] == "live").sum()) if not MATCHES.empty else 0
-finished_count = int((MATCHES["raw_status"] == "finished").sum()) if not MATCHES.empty else 0
+st.sidebar.markdown('<div class="side-cap">Feed status</div>', unsafe_allow_html=True)
+c1, c2 = st.sidebar.columns(2)
+c1.metric("Live", live_total)
+c2.metric("Played", finished_total)
 
-with st.sidebar.container(border=True):
-    st.markdown('<div class="card-label">Feed Status</div>', unsafe_allow_html=True)
-    st.metric("Live matches", live_count)
-    st.metric("Matches played", finished_count)
-    st.metric("Events", int(SPORTS["events"].sum()) if not SPORTS.empty else 0)
-
-st.sidebar.markdown("---")
-with st.sidebar.expander("🥇 Overall medal table", expanded=False):
+st.sidebar.markdown('<hr class="rule-line">', unsafe_allow_html=True)
+with st.sidebar.expander("🥇 Medal table", expanded=False):
     st.dataframe(
         MEDALS[["Rank", "University", "Gold", "Silver", "Bronze", "Total"]],
         use_container_width=True, hide_index=True,
@@ -471,103 +519,118 @@ with st.sidebar.expander("🥇 Overall medal table", expanded=False):
         },
     )
 
-st.sidebar.markdown("---")
+st.sidebar.markdown('<hr class="rule-line">', unsafe_allow_html=True)
 st.sidebar.caption("Data: **AlliSports Data**")
-st.sidebar.caption("West African Universities Games 2026")
 
 # ============================================================
-# HERO
+# BRAND BANNER
 # ============================================================
-sport_name = sports_map.get(selected_code, selected_code)
 gen = CORE.get("generatedAt")
 gen_txt = ""
 if gen:
     try:
-        gen_txt = datetime.fromisoformat(gen.replace("Z", "+00:00")).strftime("%d %b %Y, %H:%M UTC")
+        gen_txt = datetime.fromisoformat(gen.replace("Z", "+00:00")).strftime("%d %b %Y · %H:%M UTC")
     except Exception:
         gen_txt = gen
-
 prov = " · includes provisional results" if CORE.get("includesProvisional") else ""
 
 st.markdown(f"""
-<div class="hero">
-    <span class="hero-badge">{SPORT_EMOJI.get(selected_code,'🏅')} {sport_name} Division</span>
+<div class="brand">
+  <img class="brand-logo" src="{data_uri(asset('inline', 'logo-waug.png'))}">
+  <div class="brand-text">
     <h1>West African Universities Games 2026</h1>
-    <p>Obafemi Awolowo University, Ile-Ife · Official live results &amp; standings</p>
-    <p class="hero-sub">Feed updated {gen_txt}{prov} · Data: AlliSports Data</p>
+    <p>Obafemi Awolowo University, Ile-Ife &nbsp;·&nbsp; Official live results &amp; standings</p>
+    <small>Feed updated {gen_txt}{prov}</small>
+  </div>
+  <img class="brand-oau" src="{data_uri(asset('inline', 'logo-oau.png'))}">
+  <img class="brand-mascot" src="{data_uri(asset('inline', 'mascot.png'))}">
 </div>
 """, unsafe_allow_html=True)
 
 # ============================================================
-# FILTER DATA TO THE SELECTED SPORT
+# SPORT HEADER + BANNER IMAGE
 # ============================================================
+sport_name = sports_map.get(selected_code, selected_code)
+ev_count = sports_events.get(selected_code, 0)
 sp_matches = MATCHES[MATCHES["Sport"] == selected_code].copy() if not MATCHES.empty else MATCHES
 sp_results = RESULTS[RESULTS["Sport"] == selected_code].copy() if not RESULTS.empty else RESULTS
+
+st.markdown(f"""
+<div class="sport-head">
+  <span class="sport-emoji">{SPORT_EMOJI.get(selected_code, '🏅')}</span>
+  <div>
+    <h2>{sport_name}</h2>
+    <div class="rule"></div>
+  </div>
+  <div class="meta">{ev_count} event(s) &nbsp;·&nbsp; {len(sp_matches)} match(es) &nbsp;·&nbsp; {len(sp_results)} result(s)</div>
+</div>
+""", unsafe_allow_html=True)
+
+banner = asset("sport", f"{selected_code}.jpg")
+if banner:
+    st.image(banner, use_container_width=True)
 
 tabs = st.tabs(["🔴 Live & Fixtures", "🏅 Results & Medals", "📊 Standings", "📈 Statistics"])
 
 # ---------------- TAB 1: LIVE & FIXTURES ----------------
 with tabs[0]:
     if sp_matches.empty:
-        st.info(f"No matches recorded for {sport_name} yet.")
+        with st.container(border=True):
+            st.markdown('<div class="card-title">No fixtures</div>', unsafe_allow_html=True)
+            st.info(f"No matches recorded for {sport_name} yet.")
     else:
         live_df = sp_matches[sp_matches["raw_status"] == "live"]
         if not live_df.empty:
             with st.container(border=True):
                 st.markdown(
-                    '<div class="card-label">🔴 Live Now</div>'
-                    '<p><span class="live-dot"></span>In-play matches</p>',
+                    '<div class="card-title crimson">Live now</div>'
+                    '<span class="live-pill"><span class="live-dot"></span>In play</span>',
                     unsafe_allow_html=True,
                 )
-                st.dataframe(
-                    live_df[["Event", "Home", "Away", "Score", "Phase", "Venue"]],
-                    use_container_width=True, hide_index=True,
-                )
+                st.dataframe(live_df[["Event", "Home", "Away", "Score", "Phase", "Venue"]],
+                             use_container_width=True, hide_index=True)
 
         c1, c2 = st.columns([3, 2])
         with c1:
             with st.container(border=True):
-                st.markdown('<div class="card-label">All Fixtures & Results</div>', unsafe_allow_html=True)
+                st.markdown('<div class="card-title">All fixtures &amp; results</div>', unsafe_allow_html=True)
                 st.dataframe(
                     sp_matches[["Event", "Home", "Away", "Score", "Phase", "Status", "Venue"]],
                     use_container_width=True, hide_index=True,
-                    column_config={"Status": badge_col("Status")},
-                )
+                    column_config={"Status": badge_col("Status")})
         with c2:
             with st.container(border=True):
-                st.markdown('<div class="card-label">Match Counts</div>', unsafe_allow_html=True)
-                counts = (
-                    sp_matches.groupby("Status")
-                    .size().reset_index(name="Matches")
-                    .sort_values("Matches", ascending=False)
-                )
+                st.markdown('<div class="card-title navy">Match breakdown</div>', unsafe_allow_html=True)
+                counts = (sp_matches.groupby("Status").size().reset_index(name="Matches")
+                          .sort_values("Matches", ascending=False))
                 fig = px.bar(counts, x="Status", y="Matches", color_discrete_sequence=[GOLD])
-                st.plotly_chart(style_chart(fig, "Matches by Status", height=340, y_title="Matches"), use_container_width=True)
+                st.plotly_chart(style_chart(fig, "Matches by status", height=330, y_title="Matches"),
+                                use_container_width=True)
 
         with st.container(border=True):
-            st.markdown('<div class="card-label">Match Analytics</div>', unsafe_allow_html=True)
+            st.markdown('<div class="card-title teal">Match story</div>', unsafe_allow_html=True)
             finished = sp_matches[sp_matches["raw_status"] == "finished"]
             if finished.empty:
                 st.caption("No finished matches yet for this sport.")
             else:
                 opts = finished["Event"] + " — " + finished["Home"] + " v " + finished["Away"]
-                pick = st.selectbox("Pick a match", list(range(len(finished))), format_func=lambda i: opts.iloc[i])
+                pick = st.selectbox("Pick a match", list(range(len(finished))),
+                                    format_func=lambda i: opts.iloc[i], label_visibility="collapsed")
                 chosen = finished.iloc[pick]
                 analytics = get_analytics(chosen["id"])
                 if not analytics or not analytics.get("available"):
-                    st.info("No narrative analytics available for this match.")
+                    st.info("No narrative available for this match.")
                 else:
-                    st.markdown(f"**{analytics.get('headline','')}**")
+                    st.markdown(f"### {analytics.get('headline','')}")
                     comps = analytics.get("comparisons") or []
                     if comps:
                         cdf = pd.DataFrame([
-                            {"Metric": c["label"], "Home": c["home"], "Away": c["away"], "Unit": c.get("unit", "")}
-                            for c in comps
-                        ])
+                            {"Metric": c["label"], "Home": c["home"], "Away": c["away"],
+                             "Unit": c.get("unit", "")} for c in comps])
                         st.dataframe(cdf, use_container_width=True, hide_index=True)
                     insights = analytics.get("insights") or []
                     if insights:
-                        st.markdown("**Insights**")
+                        st.markdown("**Key moments**")
                         for ins in insights:
                             st.markdown(f"- {ins['text']}")
                     for note in analytics.get("notes") or []:
@@ -576,32 +639,33 @@ with tabs[0]:
 # ---------------- TAB 2: RESULTS & MEDALS ----------------
 with tabs[1]:
     if sp_results.empty:
-        st.info(f"No results recorded for {sport_name} yet.")
+        with st.container(border=True):
+            st.markdown('<div class="card-title">No results</div>', unsafe_allow_html=True)
+            st.info(f"No results recorded for {sport_name} yet.")
     else:
         c1, c2 = st.columns(2)
         with c1:
             with st.container(border=True):
-                st.markdown('<div class="card-label">Podium Winners</div>', unsafe_allow_html=True)
-                show = sp_results[["Event", "Gender", "Gold", "Gold Uni", "Silver", "Silver Uni", "Bronze", "Bronze Uni"]]
-                st.dataframe(show, use_container_width=True, hide_index=True)
-
+                st.markdown('<div class="card-title">Podium</div>', unsafe_allow_html=True)
+                st.dataframe(
+                    sp_results[["Event", "Gender", "Gold", "Gold Uni", "Silver",
+                                "Silver Uni", "Bronze", "Bronze Uni"]],
+                    use_container_width=True, hide_index=True)
         with c2:
             with st.container(border=True):
-                st.markdown('<div class="card-label">Event Status</div>', unsafe_allow_html=True)
-                counts = (
-                    sp_results.groupby("Status").size().reset_index(name="Events")
-                    .sort_values("Events", ascending=False)
-                )
-                fig = px.bar(counts, x="Status", y="Events", color_discrete_sequence=[NAVY])
-                st.plotly_chart(style_chart(fig, "Events by Status", height=340, y_title="Events"), use_container_width=True)
+                st.markdown('<div class="card-title navy">Event status</div>', unsafe_allow_html=True)
+                counts = (sp_results.groupby("Status").size().reset_index(name="Events")
+                          .sort_values("Events", ascending=False))
+                fig = px.bar(counts, x="Status", y="Events", color_discrete_sequence=[NAVY2])
+                st.plotly_chart(style_chart(fig, "Events by status", height=330, y_title="Events"),
+                                use_container_width=True)
 
         with st.container(border=True):
-            st.markdown('<div class="card-label">Results Schedule</div>', unsafe_allow_html=True)
+            st.markdown('<div class="card-title teal">Schedule</div>', unsafe_allow_html=True)
             st.dataframe(
                 sp_results[["Event", "Gender", "Kind", "Starts (UTC)", "Status"]],
                 use_container_width=True, hide_index=True,
-                column_config={"Status": badge_col("Status")},
-            )
+                column_config={"Status": badge_col("Status")})
 
 # ---------------- TAB 3: STANDINGS ----------------
 with tabs[2]:
@@ -610,23 +674,17 @@ with tabs[2]:
         for group in comp.get("groups") or []:
             with st.container(border=True):
                 st.markdown(
-                    f'<div class="card-label">{group.get("name","Group")} '
-                    f'(advance: {group.get("advance","—")})</div>',
-                    unsafe_allow_html=True,
-                )
+                    f'<div class="card-title">{group.get("name", "Group")} '
+                    f'· advance {group.get("advance", "—")}</div>', unsafe_allow_html=True)
                 grows = group.get("rows") or []
                 if grows:
                     gdf = pd.DataFrame([
-                        {
-                            "Pos": r["position"],
-                            "Team": r["team"]["name"],
-                            "P": r["played"], "W": r["won"], "D": r["drawn"], "L": r["lost"],
-                            "GF": r["goalsFor"], "GA": r["goalsAgainst"],
-                            "GD": r["goalDifference"], "Pts": r["points"],
-                            "Qualifies": "✅ Yes" if r.get("qualifies") else "—",
-                        }
-                        for r in grows
-                    ])
+                        {"Pos": r["position"], "Team": r["team"]["name"],
+                         "P": r["played"], "W": r["won"], "D": r["drawn"], "L": r["lost"],
+                         "GF": r["goalsFor"], "GA": r["goalsAgainst"],
+                         "GD": r["goalDifference"], "Pts": r["points"],
+                         "Qualifies": "✅ Yes" if r.get("qualifies") else "—"}
+                        for r in grows])
                     st.dataframe(
                         gdf, use_container_width=True, hide_index=True,
                         column_config={
@@ -634,31 +692,20 @@ with tabs[2]:
                             "Pts": st.column_config.ProgressColumn("Points", min_value=0, max_value=9, format="%d"),
                             "GF": st.column_config.NumberColumn("For", format="%d"),
                             "GA": st.column_config.NumberColumn("Against", format="%d"),
-                            "GD": st.column_config.NumberColumn("GD", format="%+d"),
-                        },
-                    )
+                            "GD": st.column_config.NumberColumn("GD", format="%+d")})
         ko = comp.get("knockout")
         if ko:
             with st.container(border=True):
-                st.markdown('<div class="card-label">Knockout Rounds</div>', unsafe_allow_html=True)
+                st.markdown('<div class="card-title">Knockout rounds</div>', unsafe_allow_html=True)
                 st.json(ko, expanded=False)
     else:
-        # Fall back to a league table computed from the finished matches
         events = get_sport_events(selected_code)
         is_tournament = any(str(e.get("category", "")).lower() == "tournament" for e in events)
         derived = derive_standings(sp_matches) if is_tournament else pd.DataFrame()
-
         if not derived.empty:
             with st.container(border=True):
-                st.markdown(
-                    '<div class="card-label">League Table (computed from match results)</div>',
-                    unsafe_allow_html=True,
-                )
-                st.caption(
-                    "The feed does not publish an official group table for this sport, "
-                    "so this table is calculated from the finished matches "
-                    "(3 points for a win, 1 for a draw)."
-                )
+                st.markdown('<div class="card-title">League table</div>', unsafe_allow_html=True)
+                st.caption("Calculated from the finished matches — 3 points for a win, 1 for a draw.")
                 st.dataframe(
                     derived, use_container_width=True, hide_index=True,
                     column_config={
@@ -666,42 +713,46 @@ with tabs[2]:
                         "Pts": st.column_config.ProgressColumn("Points", min_value=0, max_value=12, format="%d"),
                         "GF": st.column_config.NumberColumn("For", format="%d"),
                         "GA": st.column_config.NumberColumn("Against", format="%d"),
-                        "GD": st.column_config.NumberColumn("GD", format="%+d"),
-                    },
-                )
+                        "GD": st.column_config.NumberColumn("GD", format="%+d")})
         else:
-            st.info(f"No group table or knockout bracket is published for {sport_name}.")
+            with st.container(border=True):
+                st.markdown('<div class="card-title">Standings</div>', unsafe_allow_html=True)
+                st.info(f"No group table or knockout bracket is published for {sport_name}.")
 
     with st.container(border=True):
-        st.markdown('<div class="card-label">Medals won by universities in this sport</div>', unsafe_allow_html=True)
+        st.markdown('<div class="card-title crimson">Medals in this sport</div>', unsafe_allow_html=True)
         if sp_results.empty:
             st.caption("No medals awarded yet in this sport.")
         else:
             per_uni = {}
             for _, r in sp_results.iterrows():
-                for uni, slot in ((r["Gold Uni"], "Gold"), (r["Silver Uni"], "Silver"), (r["Bronze Uni"], "Bronze")):
+                for uni, slot in ((r["Gold Uni"], "Gold"), (r["Silver Uni"], "Silver"),
+                                  (r["Bronze Uni"], "Bronze")):
                     if uni and uni != "—":
-                        per_uni.setdefault(uni, {"University": uni, "Gold": 0, "Silver": 0, "Bronze": 0})[slot] += 1
+                        per_uni.setdefault(uni, {"University": uni, "Gold": 0,
+                                                  "Silver": 0, "Bronze": 0})[slot] += 1
             if per_uni:
                 udf = pd.DataFrame(list(per_uni.values())).sort_values("Gold", ascending=False)
                 st.dataframe(udf, use_container_width=True, hide_index=True)
-                fig = px.bar(
-                    udf.head(10), x="University", y=["Gold", "Silver", "Bronze"], barmode="stack",
-                    color_discrete_map={"Gold": GOLD, "Silver": GREY, "Bronze": "#CD7F32"},
-                )
-                st.plotly_chart(style_chart(fig, f"{sport_name} medals by university", y_title="Medals"), use_container_width=True)
+                fig = px.bar(udf.head(10), x="University", y=["Gold", "Silver", "Bronze"],
+                             barmode="stack",
+                             color_discrete_map={"Gold": GOLD, "Silver": "#9CA3AF", "Bronze": "#CD7F32"})
+                st.plotly_chart(style_chart(fig, f"{sport_name} medals by university",
+                                            y_title="Medals"), use_container_width=True)
             else:
                 st.caption("No medals awarded yet in this sport.")
 
 # ---------------- TAB 4: STATISTICS ----------------
 with tabs[3]:
     if sp_matches.empty:
-        st.info("No match statistics available yet.")
+        with st.container(border=True):
+            st.markdown('<div class="card-title">Statistics</div>', unsafe_allow_html=True)
+            st.info("No match statistics available yet.")
     else:
         c1, c2 = st.columns(2)
         with c1:
             with st.container(border=True):
-                st.markdown('<div class="card-label">Total Goals by Team</div>', unsafe_allow_html=True)
+                st.markdown('<div class="card-title">Goals by team</div>', unsafe_allow_html=True)
                 goals = []
                 for _, r in sp_matches.iterrows():
                     if r["Home Uni"]:
@@ -712,13 +763,14 @@ with tabs[3]:
                     gdf = pd.DataFrame(goals).groupby("Team", as_index=False)["Goals"].sum()
                     gdf = gdf.sort_values("Goals", ascending=False).head(12)
                     fig = px.bar(gdf, x="Team", y="Goals", color_discrete_sequence=[CRIMSON])
-                    st.plotly_chart(style_chart(fig, "Goals Scored", y_title="Goals"), use_container_width=True)
+                    st.plotly_chart(style_chart(fig, "Goals scored", y_title="Goals"),
+                                    use_container_width=True)
                 else:
                     st.caption("No goals recorded yet.")
 
         with c2:
             with st.container(border=True):
-                st.markdown('<div class="card-label">Biggest Margins</div>', unsafe_allow_html=True)
+                st.markdown('<div class="card-title navy">Biggest margins</div>', unsafe_allow_html=True)
                 fin = sp_matches[sp_matches["raw_status"] == "finished"].copy()
                 if fin.empty:
                     st.caption("No finished matches yet.")
@@ -729,26 +781,26 @@ with tabs[3]:
                     fig = px.bar(top, x="Margin", y="Home", orientation="h",
                                  color_discrete_sequence=[PURPLE])
                     fig.update_layout(yaxis=dict(showticklabels=False))
-                    st.plotly_chart(style_chart(fig, "Largest Winning Margins", y_title="", legend=False), use_container_width=True)
+                    st.plotly_chart(style_chart(fig, "Largest winning margins", y_title="",
+                                                legend=False), use_container_width=True)
 
         with st.container(border=True):
-            st.markdown('<div class="card-label">Games Across All Sports</div>', unsafe_allow_html=True)
+            st.markdown('<div class="card-title teal">Games across all sports</div>', unsafe_allow_html=True)
             if not MATCHES.empty:
-                per_sport = (
-                    MATCHES[MATCHES["raw_status"] == "finished"]
-                    .groupby("Sport").size().reset_index(name="Matches")
-                )
+                per_sport = (MATCHES[MATCHES["raw_status"] == "finished"]
+                             .groupby("Sport").size().reset_index(name="Matches"))
                 per_sport["Name"] = per_sport["Sport"].map(sports_map)
                 fig = px.bar(per_sport.sort_values("Matches", ascending=False),
-                             x="Name", y="Matches", color_discrete_sequence=[NAVY])
+                             x="Name", y="Matches", color_discrete_sequence=[TEAL])
                 fig.update_layout(xaxis_tickangle=-45)
-                st.plotly_chart(style_chart(fig, "Completed Matches by Sport", y_title="Matches"), use_container_width=True)
+                st.plotly_chart(style_chart(fig, "Completed matches by sport", y_title="Matches"),
+                                use_container_width=True)
 
 # ============================================================
 # FOOTER
 # ============================================================
-st.markdown("---")
-st.caption(
-    "📌 **WAUG 2026 Live Analytics** · Obafemi Awolowo University, Ile-Ife · "
-    "Data: **AlliSports Data** · Medal table calculated from confirmed results"
+st.markdown(
+    '<div class="foot">WAUG 2026 Live Analytics · Obafemi Awolowo University, Ile-Ife · '
+    'Data: <b>AlliSports Data</b></div>',
+    unsafe_allow_html=True,
 )

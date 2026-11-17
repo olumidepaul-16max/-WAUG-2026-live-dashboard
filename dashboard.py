@@ -2,8 +2,8 @@
 WAUG 2026 — live dashboard page.
 
 Per-sport fixtures, results, standings and statistics from the AlliSports
-Data API. The page carries no brand imagery: the only pictures are the sport
-banner and the sidebar thumbnail for the sport picked in the filters.
+Data API. The only picture on the page is the thumbnail under the filters for
+the sport you pick.
 """
 
 import os
@@ -42,11 +42,6 @@ st.markdown("""
 .sport-head h2 { color:#fff; font-size:1.8rem; font-weight:800; margin:0; letter-spacing:-.4px; }
 .sport-head .rule { height:3px; width:64px; background:#E8B84B; border-radius:2px; margin-top:7px; }
 .sport-head .meta { color:#8FA3D4; font-size:.84rem; font-weight:600; margin-left:auto; text-align:right; }
-.sport-banner { border-radius: 12px; overflow: hidden; border: 1px solid rgba(232,184,75,.22);
-                box-shadow: 0 8px 24px rgba(0,0,0,.4); margin-bottom: 6px; }
-.sport-banner img { display:block; width:100%; }
-.gold-rule { height:3px; background:linear-gradient(90deg,#E8B84B 0%, rgba(232,184,75,0) 70%);
-             border-radius:2px; margin: 0 0 20px; }
 
 /* ================= CARDS ================= */
 .card {
@@ -102,6 +97,7 @@ st.markdown("""
 /* ================= FILTERS ================= */
 .filters-h { color:#fff; font-size:1.36rem; font-weight:800; letter-spacing:-.3px; margin:0 0 16px; }
 .filters-note { color:#9DB0DA; font-size:.79rem; line-height:1.55; margin:10px 0 14px; }
+.side-sport { text-align:center; font-weight:700; color:#E9EEFB; font-size:.9rem; margin:-4px 0 12px; }
 [data-testid="stSidebar"] .stSelectbox label p {
     color:#E9EEFB !important; font-size:.87rem !important; font-weight:600 !important;
 }
@@ -232,6 +228,15 @@ country = st.sidebar.selectbox(
     "Country", countries, format_func=lambda c: COUNTRY_LABEL.get(c, c),
 )
 
+thumb = asset("thumb", f"{selected_code}.jpg")
+if thumb:
+    st.sidebar.image(thumb, use_container_width=True)
+st.sidebar.markdown(
+    f'<div class="side-sport">{SPORT_EMOJI.get(selected_code, "🏅")} '
+    f'{sports_map.get(selected_code, selected_code)}</div>',
+    unsafe_allow_html=True,
+)
+
 st.sidebar.markdown(
     '<div class="filters-note">Country comes from the AlliSports Data feed.</div>',
     unsafe_allow_html=True,
@@ -244,15 +249,6 @@ if st.sidebar.button("Refresh data", use_container_width=True):
     get_analytics.clear()
     get_sport_events.clear()
     st.rerun()
-
-thumb = asset("thumb", f"{selected_code}.jpg")
-if thumb:
-    st.sidebar.image(thumb, use_container_width=True)
-st.sidebar.markdown(
-    f'<div style="text-align:center;font-weight:700;color:#0D1940;margin-top:-6px;">'
-    f'{SPORT_EMOJI.get(selected_code, "🏅")} {sports_map.get(selected_code, selected_code)}</div>',
-    unsafe_allow_html=True,
-)
 
 st.sidebar.markdown('<hr class="rule-line">', unsafe_allow_html=True)
 st.sidebar.markdown('<div class="side-cap">Feed status</div>', unsafe_allow_html=True)
@@ -302,7 +298,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ============================================================
-# SPORT HEADER + BANNER IMAGE
+# SPORT HEADER
 # ============================================================
 sport_name = sports_map.get(selected_code, selected_code)
 ev_count = sports_events.get(selected_code, 0)
@@ -354,11 +350,6 @@ st.markdown(f"""
   <div class="meta">{ev_count} event(s) &nbsp;·&nbsp; {len(sp_matches)} match(es) &nbsp;·&nbsp; {len(sp_results)} result(s){filter_txt}</div>
 </div>
 """, unsafe_allow_html=True)
-
-banner = asset("sport", f"{selected_code}.jpg")
-if banner:
-    st.image(banner, use_container_width=True)
-    st.markdown('<div class="gold-rule"></div>', unsafe_allow_html=True)
 
 tabs = st.tabs(["🔴 Live & Fixtures", "🏅 Results & Medals", "📊 Standings", "📈 Statistics"])
 

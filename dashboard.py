@@ -2,8 +2,8 @@
 WAUG 2026 — live dashboard page.
 
 Per-sport fixtures, results, standings and statistics from the AlliSports
-Data API. Images appear only where they belong: the banner for the sport you
-pick in the sidebar.
+Data API. The page carries no brand imagery: the only pictures are the sport
+banner and the sidebar thumbnail for the sport picked in the filters.
 """
 
 import os
@@ -99,6 +99,25 @@ st.markdown("""
 [data-testid="stSidebar"] * { color:#E2E8F7; }
 .side-cap { color:#E8B84B; font-size:.72rem; font-weight:800; text-transform:uppercase; letter-spacing:1.3px; margin:16px 0 6px; }
 
+/* ================= FILTERS ================= */
+.filters-h { color:#fff; font-size:1.36rem; font-weight:800; letter-spacing:-.3px; margin:0 0 16px; }
+.filters-note { color:#9DB0DA; font-size:.79rem; line-height:1.55; margin:10px 0 14px; }
+[data-testid="stSidebar"] .stSelectbox label p {
+    color:#E9EEFB !important; font-size:.87rem !important; font-weight:600 !important;
+}
+[data-testid="stSidebar"] [data-baseweb="select"] > div {
+    background:#0F1D42 !important; border:1px solid rgba(255,255,255,.20) !important;
+    border-radius:10px !important; min-height:46px;
+}
+[data-testid="stSidebar"] [data-baseweb="select"] > div:hover { border-color:rgba(232,184,75,.6) !important; }
+[data-testid="stSidebar"] [data-baseweb="select"] span { font-size:.88rem !important; }
+[data-testid="stSidebar"] .stButton > button {
+    background:#E9EEFB !important; color:#0A1533 !important; border:1px solid #E9EEFB !important;
+    font-weight:700 !important; font-size:.86rem !important; border-radius:10px !important;
+    padding:9px 14px !important;
+}
+[data-testid="stSidebar"] .stButton > button:hover { background:#fff !important; border-color:#fff !important; }
+
 /* ================= MISC ================= */
 .live-pill {
     display:inline-flex; align-items:center; gap:8px; background:rgba(206,17,38,.16); color:#FF8A94;
@@ -163,12 +182,13 @@ live_total = int((MATCHES["raw_status"] == "live").sum()) if not MATCHES.empty e
 finished_total = int((MATCHES["raw_status"] == "finished").sum()) if not MATCHES.empty else 0
 
 # ============================================================
-# SIDEBAR
+# SIDEBAR — filters
 # ============================================================
-st.sidebar.markdown("**WAUG 2026**")
-st.sidebar.caption("West African University Games · OAU, Ile-Ife")
-st.sidebar.markdown('<hr class="rule-line">', unsafe_allow_html=True)
-st.sidebar.markdown('<div class="side-cap">Choose a sport</div>', unsafe_allow_html=True)
+UNIS = CORE["universities"]
+uni_country = dict(zip(UNIS["University"], UNIS["Country"])) if not UNIS.empty else {}
+code_country = dict(zip(UNIS["Code"], UNIS["Country"])) if not UNIS.empty else {}
+COUNTRY_LABEL = {"NG": "Nigeria", "GH": "Ghana"}
+country_codes = sorted({c for c in code_country.values() if c})
 
 
 def sport_label(code: str) -> str:
@@ -182,19 +202,48 @@ def _sync_sport_query():
         pass
 
 
+st.sidebar.markdown('<div class="filters-h">Filters</div>', unsafe_allow_html=True)
+
 qp = st.query_params.get("sport", "")
 if qp in code_list:
     st.session_state["sport_pick"] = qp
 
 selected_code = st.sidebar.selectbox(
     "Sport", code_list, format_func=sport_label,
-    key="sport_pick", on_change=_sync_sport_query, label_visibility="collapsed",
+    key="sport_pick", on_change=_sync_sport_query,
 )
 if st.query_params.get("sport", "") != selected_code:
     try:
         st.query_params["sport"] = selected_code
     except Exception:
         pass
+
+sport_event_rows = get_sport_events(selected_code)
+cat_map = {}
+for _ev in sport_event_rows:
+    _cat = (_ev.get("category") or "").strip()
+    if _cat:
+        cat_map.setdefault(_cat.lower(), _cat)
+categories = ["All categories"] + sorted(cat_map.values(), key=str.lower)
+category = st.sidebar.selectbox("Category", categories)
+
+countries = ["All countries"] + country_codes
+country = st.sidebar.selectbox(
+    "Country", countries, format_func=lambda c: COUNTRY_LABEL.get(c, c),
+)
+
+st.sidebar.markdown(
+    '<div class="filters-note">Country comes from the AlliSports Data feed.</div>',
+    unsafe_allow_html=True,
+)
+
+if st.sidebar.button("Refresh data", use_container_width=True):
+    load_core.clear()
+    api_get.clear()
+    get_competition.clear()
+    get_analytics.clear()
+    get_sport_events.clear()
+    st.rerun()
 
 thumb = asset("thumb", f"{selected_code}.jpg")
 if thumb:
@@ -206,20 +255,18 @@ st.sidebar.markdown(
 )
 
 st.sidebar.markdown('<hr class="rule-line">', unsafe_allow_html=True)
-if st.sidebar.button("🔄  Refresh feed", use_container_width=True):
-    load_core.clear(); api_get.clear()
-    get_competition.clear(); get_analytics.clear()
-    st.rerun()
-
 st.sidebar.markdown('<div class="side-cap">Feed status</div>', unsafe_allow_html=True)
 c1, c2 = st.sidebar.columns(2)
 c1.metric("Live", live_total)
 c2.metric("Played", finished_total)
 
 st.sidebar.markdown('<hr class="rule-line">', unsafe_allow_html=True)
+side_medals = MEDALS
+if country != "All countries" and not MEDALS.empty:
+    side_medals = MEDALS[MEDALS["Code"].map(lambda c: code_country.get(c) == country)]
 with st.sidebar.expander("🥇 Medal table", expanded=False):
     st.dataframe(
-        MEDALS[["Rank", "University", "Gold", "Silver", "Bronze", "Total"]],
+        side_medals[["Rank", "University", "Gold", "Silver", "Bronze", "Total"]],
         use_container_width=True, hide_index=True,
         column_config={
             "Rank": st.column_config.NumberColumn("#", format="%d"),
@@ -260,7 +307,42 @@ st.markdown(f"""
 sport_name = sports_map.get(selected_code, selected_code)
 ev_count = sports_events.get(selected_code, 0)
 sp_matches = MATCHES[MATCHES["Sport"] == selected_code].copy() if not MATCHES.empty else MATCHES
+sp_matches_all = sp_matches.copy()
 sp_results = RESULTS[RESULTS["Sport"] == selected_code].copy() if not RESULTS.empty else RESULTS
+
+# category narrows the results and the schedule count; fixtures stay sport-wide
+if category != "All categories":
+    ev_count = sum(
+        1 for e in sport_event_rows
+        if (e.get("category") or "").strip().lower() == category.lower()
+    )
+    if not sp_results.empty:
+        row_cat = sp_results["Event"].str.split(" - ", n=1).str[-1].str.lower()
+        sp_results = sp_results[row_cat == category.lower()].copy()
+
+
+def _in_country(name) -> bool:
+    return country == "All countries" or uni_country.get(name) == country
+
+
+if country != "All countries":
+    if not sp_matches.empty:
+        sp_matches = sp_matches[
+            sp_matches["Home Uni"].map(_in_country) | sp_matches["Away Uni"].map(_in_country)
+        ].copy()
+    if not sp_results.empty:
+        sp_results = sp_results[
+            sp_results["Gold Uni"].map(_in_country)
+            | sp_results["Silver Uni"].map(_in_country)
+            | sp_results["Bronze Uni"].map(_in_country)
+        ].copy()
+
+filter_bits = []
+if category != "All categories":
+    filter_bits.append(category)
+if country != "All countries":
+    filter_bits.append(f"{COUNTRY_LABEL.get(country, country)} only")
+filter_txt = "".join(f" &nbsp;·&nbsp; {b}" for b in filter_bits)
 
 st.markdown(f"""
 <div class="sport-head">
@@ -269,7 +351,7 @@ st.markdown(f"""
     <h2>{sport_name}</h2>
     <div class="rule"></div>
   </div>
-  <div class="meta">{ev_count} event(s) &nbsp;·&nbsp; {len(sp_matches)} match(es) &nbsp;·&nbsp; {len(sp_results)} result(s)</div>
+  <div class="meta">{ev_count} event(s) &nbsp;·&nbsp; {len(sp_matches)} match(es) &nbsp;·&nbsp; {len(sp_results)} result(s){filter_txt}</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -282,10 +364,18 @@ tabs = st.tabs(["🔴 Live & Fixtures", "🏅 Results & Medals", "📊 Standings
 
 # ---------------- TAB 1: LIVE & FIXTURES ----------------
 with tabs[0]:
+    if category != "All categories":
+        st.caption(
+            "Fixtures are listed for the whole sport; the category filter applies to results and medals."
+        )
     if sp_matches.empty:
         with st.container(border=True):
             st.markdown('<div class="card-title">No fixtures</div>', unsafe_allow_html=True)
-            st.info(f"No matches recorded for {sport_name} yet.")
+            if country != "All countries":
+                st.info(f"No matches recorded for {sport_name} involving "
+                        f"{COUNTRY_LABEL.get(country, country)} universities.")
+            else:
+                st.info(f"No matches recorded for {sport_name} yet.")
     else:
         live_df = sp_matches[sp_matches["raw_status"] == "live"]
         if not live_df.empty:
@@ -349,7 +439,10 @@ with tabs[1]:
     if sp_results.empty:
         with st.container(border=True):
             st.markdown('<div class="card-title">No results</div>', unsafe_allow_html=True)
-            st.info(f"No results recorded for {sport_name} yet.")
+            if filter_bits:
+                st.info(f"No results for {sport_name} match these filters.")
+            else:
+                st.info(f"No results recorded for {sport_name} yet.")
     else:
         c1, c2 = st.columns(2)
         with c1:
@@ -385,6 +478,8 @@ with tabs[2]:
                     f'<div class="card-title">{group.get("name", "Group")} '
                     f'· advance {group.get("advance", "—")}</div>', unsafe_allow_html=True)
                 grows = group.get("rows") or []
+                if country != "All countries":
+                    grows = [r for r in grows if uni_country.get(r["team"]["name"]) == country]
                 if grows:
                     gdf = pd.DataFrame([
                         {"Pos": r["position"], "Team": r["team"]["name"],
@@ -401,6 +496,8 @@ with tabs[2]:
                             "GF": st.column_config.NumberColumn("For", format="%d"),
                             "GA": st.column_config.NumberColumn("Against", format="%d"),
                             "GD": st.column_config.NumberColumn("GD", format="%+d")})
+                else:
+                    st.caption("No teams from this country in the group.")
         ko = comp.get("knockout")
         if ko:
             with st.container(border=True):
@@ -409,7 +506,9 @@ with tabs[2]:
     else:
         events = get_sport_events(selected_code)
         is_tournament = any(str(e.get("category", "")).lower() == "tournament" for e in events)
-        derived = derive_standings(sp_matches) if is_tournament else pd.DataFrame()
+        derived = derive_standings(sp_matches_all) if is_tournament else pd.DataFrame()
+        if country != "All countries" and not derived.empty:
+            derived = derived[derived["Team"].map(lambda t: uni_country.get(t) == country)]
         if not derived.empty:
             with st.container(border=True):
                 st.markdown('<div class="card-title">League table</div>', unsafe_allow_html=True)
@@ -494,8 +593,13 @@ with tabs[3]:
 
         with st.container(border=True):
             st.markdown('<div class="card-title teal">Games across all sports</div>', unsafe_allow_html=True)
-            if not MATCHES.empty:
-                per_sport = (MATCHES[MATCHES["raw_status"] == "finished"]
+            base = MATCHES
+            if country != "All countries" and not MATCHES.empty:
+                base = MATCHES[
+                    MATCHES["Home Uni"].map(_in_country) | MATCHES["Away Uni"].map(_in_country)
+                ]
+            if not base.empty:
+                per_sport = (base[base["raw_status"] == "finished"]
                              .groupby("Sport").size().reset_index(name="Matches"))
                 per_sport["Name"] = per_sport["Sport"].map(sports_map)
                 fig = px.bar(per_sport.sort_values("Matches", ascending=False),

@@ -48,6 +48,16 @@ OAU_SPORTS, UG_SPORTS = int(oau["Sports"]), int(ug["Sports"])
 OAU_GOLD_SHARE = 100 * OAU_G / OAU_T
 GAP = OAU_T - UG_T
 
+
+def _gold_share(code: str) -> float:
+    return float(BY.loc[code, "GoldShare"]) if code in BY.index else 0.0
+
+
+DELSU_PCT = _gold_share("DELSU")
+LASU_PCT = _gold_share("LASU")
+BIU_PCT = _gold_share("BIU-NG")
+UG_PCT = 100 * int(ug["Gold"]) / UG_T if UG_T else 0.0
+
 top3_share = 100 * T.head(3)["Total"].sum() / TOT
 top5_share = 100 * T.head(5)["Total"].sum() / TOT
 cum = (T["Total"].cumsum() / TOT * 100).tolist()
@@ -64,6 +74,19 @@ silver_pool = int(rep["totals"].get("silver", T["Silver"].sum()))
 bronze_pool = int(rep["totals"].get("bronze", T["Bronze"].sum()))
 
 missing_sports = [c for c in ALL_SPORTS if c not in MATRIX.columns]
+
+
+def _pool(code: str):
+    row = POOL.loc[POOL["Code"] == code]
+    return (int(row["Events"].iloc[0]), int(row["Medals"].iloc[0])) if len(row) else (0, 0)
+
+
+TKW_EVENTS, TKW_MEDALS = _pool("TKW")
+BDM_EVENTS, BDM_MEDALS = _pool("BDM")
+EMPTY_SPORTS = len(missing_sports) + int((POOL["Medals"] == 0).sum())
+_WORDS = {1: "One", 2: "Two", 3: "Three", 4: "Four", 5: "Five", 6: "Six",
+          7: "Seven", 8: "Eight", 9: "Nine", 10: "Ten"}
+EMPTY_WORD = _WORDS.get(EMPTY_SPORTS, str(EMPTY_SPORTS))
 top_pool = POOL[POOL["Medals"] > 0].sort_values("Medals", ascending=False)
 MEDAL_SPORTS = len(top_pool)
 big_two = int(top_pool.head(2)["Medals"].sum())
@@ -100,7 +123,7 @@ TOC = [
     ("s1", "1. What I did"),
     ("s2", "2. How concentrated the medals were"),
     ("s3", "3. Depth against specialism"),
-    ("s4", "4. Where the 63-medal gap came from"),
+    ("s4", f"4. Where the {GAP}-medal gap came from"),
     ("s5", "5. Volume against quality"),
     ("s6", "6. Does the ranking rule matter?"),
     ("s7", "7. What the table hides"),
@@ -121,7 +144,8 @@ st.sidebar.markdown(
 # HERO
 # ============================================================
 ui.eyebrow("WAUG 2026 &nbsp;·&nbsp; Results analysis &nbsp;·&nbsp; 2–12 October &nbsp;·&nbsp; Obafemi Awolowo University, Ile-Ife")
-ui.display("Depth won these Games. OAU medalled in 14 sports; the runners-up managed four.")
+ui.display(f"Depth won these Games. OAU medalled in {OAU_SPORTS} sports; the runners-up managed "
+           f"{_WORDS.get(UG_SPORTS, UG_SPORTS).lower()}.")
 ui.lede(
     f"I took the {TOT} medals of the 15th West African University Games and asked what produced the table, "
     f"not just what it shows. The host won <strong>{OAU_T}</strong> of them — a quarter of everything awarded — "
@@ -130,9 +154,10 @@ ui.lede(
     "The top two places survive every scoring rule I tried. Third place does not."
 )
 ui.kpis([
-    (f"{100 * OAU_T / TOT:.0f}%", f"of all {TOT} medals went to the host", "Results · 122 medals"),
+    (f"{100 * OAU_T / TOT:.0f}%", f"of all {TOT} medals went to the host", f"Results · {OAU_T} medals"),
     (f"{OAU_SPORTS} v {UG_SPORTS}", "sports in which OAU and UG-GH won at least one medal", "Results"),
-    (f"{OAU_GOLD_SHARE:.0f}%", "of OAU's medals were gold; DELSU turned 64% of its 11 into gold", "Calculated"),
+    (f"{OAU_GOLD_SHARE:.0f}%", f"of OAU's medals were gold; DELSU turned {DELSU_PCT:.0f}% of its "
+     f"{int(BY.loc['DELSU', 'Total'])} into gold", "Calculated"),
 ])
 
 b1, b2, b3 = st.columns([1, 1.12, 1.02])
@@ -155,10 +180,11 @@ ui.summary([
                       f"{100 * OAU_T / TOT:.0f}%."),
     ("Depth", f"Total medals track how many sports a school medalled in (r = {breadth_r:.2f}). "
               f"OAU medalled in all {OAU_SPORTS} sports on record; University of Ghana in {UG_SPORTS}."),
-    ("The gap", f"OAU's {GAP}-medal lead is broad — ahead in 11 sports, behind in 3. "
+    ("The gap", f"OAU's {GAP}-medal lead is broad — ahead in {ahead} sports, behind in {behind}. "
                 "Judo (+20), taekwondo (+13) and chess (+12) carry it; athletics (−20) is the only large loss."),
     ("Quality", f"OAU took {OAU_G} golds but {OAU_S} silvers — a third of every silver awarded. Only "
-                f"{OAU_GOLD_SHARE:.0f}% of its medals were gold, against DELSU's 64% and LASU's 59%."),
+                f"{OAU_GOLD_SHARE:.0f}% of its medals were gold, against DELSU's {DELSU_PCT:.0f}% and "
+                f"LASU's {LASU_PCT:.0f}%."),
     ("Rules", "The top two hold under gold-first, total medals, 3-2-1 points and golds-only. Third does not: "
               f"on total medals {third_phrase} share third and BIU-NG drops to fifth. "
               f"{len(movers)} schools move three places or more."),
@@ -174,9 +200,9 @@ ui.section("s1", "01", "Method", "What I did, and how I checked it")
 ui.body(
     "The Games ran on the Obafemi Awolowo University campus from 2 to 12 October 2026. I pulled the official "
     "results, the medal table, the schedule and every finished match from the AlliSports Data feed, then "
-    "<strong>rebuilt the medal table from the 478 individual medals</strong> to see whether the two agreed. "
-    "They do exactly: the same 478 medals, the same 23 schools, no difference in a single row. Every number "
-    "below therefore traces back to a recorded result."
+    f"<strong>rebuilt the medal table from the {TOT} individual medals</strong> to see whether the two agreed. "
+    f"They do exactly: the same {TOT} medals, the same {rep['school_count']} schools, no difference in a single "
+    "row. Every number below therefore traces back to a recorded result."
 )
 ui.body(
     "I keep the official ranking separate from the alternative scoring rules I use as checks, and I say when a "
@@ -328,7 +354,8 @@ ui.caption("What it shows",
 ui.section("s4", "04", "The gap", f"Where {GAP} medals came from")
 ui.body(
     f"OAU finished {GAP} medals ahead of UG-GH. Taken sport by sport, the differences add up exactly to that gap: "
-    f"ahead in {ahead} of the {len(VS)} sports the two schools shared, behind in {behind}, level in {level}. "
+    f"ahead in {ahead} of the {len(VS)} sports the two schools shared, behind in {behind}, "
+    f"{'level in none' if level == 0 else f'level in {level}'}. "
     "Judo (+20) and taekwondo (+13) — where Ghana won nothing — supply more than half of it; chess (+12) and "
     "swimming (+12) add most of the rest. Athletics runs the other way: UG-GH's 29 medals there against OAU's 9 "
     "is the single large loss (−20). Badminton and tennis (−4 each) are the only other sports where the runner-up "
@@ -347,7 +374,7 @@ fig = go.Figure(go.Bar(
 ))
 fig.add_vline(x=0, line=dict(color="rgba(255,255,255,.28)", width=1))
 ui.base_layout(fig, height=430, margin=dict(t=18, r=54, b=44, l=54))
-fig.update_xaxes(title="Medals ahead of UG-GH", range=[-25, 25])
+fig.update_xaxes(title="Medals ahead of UG-GH", range=[-(int(abs(VS["Diff"]).max()) + 4), int(abs(VS["Diff"]).max()) + 4])
 fig.update_yaxes(title=None)
 ui.chart(fig, key="gap")
 ui.caption("What it shows",
@@ -379,7 +406,8 @@ ui.body(
     f"The official table ranks gold first, so gold still decides first place, and OAU's {OAU_G} is the largest "
     f"haul of anyone's. But look at the mix: {OAU_S} silvers — {100 * OAU_S / silver_pool:.0f}% of every silver "
     f"awarded — and {OAU_B} bronzes. Only {OAU_GOLD_SHARE:.0f}% of its medals were gold, against "
-    f"{100 * int(ug['Gold']) / UG_T:.0f}% for UG-GH, 55% for BIU-NG, 59% for LASU and 64% for DELSU. "
+    f"{UG_PCT:.0f}% for UG-GH, {BIU_PCT:.0f}% for BIU-NG, {LASU_PCT:.0f}% for LASU and {DELSU_PCT:.0f}% for "
+    "DELSU. "
     "In other words the host was rarely off the podium, and often second on it. Whether that is strength — "
     "depth across events — or a conversion problem is exactly the question that entries data would settle, "
     "and the feed does not carry entries."
@@ -395,7 +423,8 @@ fig = go.Figure(go.Bar(
 ))
 ui.chart_title("Who turned podiums into gold  ·  share of medals that were gold, schools with 10 or more")
 ui.base_layout(fig, height=420, margin=dict(t=18, r=54, b=44, l=54))
-fig.update_xaxes(title="Share of medals that were gold", ticksuffix="%", range=[0, 72])
+fig.update_xaxes(title="Share of medals that were gold", ticksuffix="%",
+                 range=[0, max(72, float(qual["GoldShare"].max()) + 8)])
 ui.chart(fig, key="quality")
 ui.caption("What it shows",
            f"The host is high on the table but low on this chart. DELSU turned 7 of its 11 podiums into gold; "
@@ -484,14 +513,15 @@ ui.body(
     "in the pool and on the track can look far broader than it is, and the medal table will not say so."
 )
 ui.body(
-    f"<strong>Sports do not hand out the same number of medals.</strong> Taekwondo awarded 76 medals over 20 events — "
-    "almost four per event, because both bronze slots are filled — while badminton awarded two per event over its ten. "
+    f"<strong>Sports do not hand out the same number of medals.</strong> Taekwondo awarded {TKW_MEDALS} medals over "
+    f"{TKW_EVENTS} events — {TKW_MEDALS / TKW_EVENTS:.1f} per event, because both bronze slots are filled — while "
+    f"badminton awarded {BDM_MEDALS / BDM_EVENTS:.0f} per event over its {BDM_EVENTS}. "
     "A fourth place is a bronze in one sport and nothing in another, so totals partly reflect which sports a school "
     "entered."
 )
 ui.body(
-    f"<strong>Six sports are missing or empty.</strong> The catalogue lists {len(ALL_SPORTS)} sports; the results "
-    f"cover {len(MATRIX.columns)}, and only {MEDAL_SPORTS} of those awarded a medal. " +
+    f"<strong>{EMPTY_WORD} sports are missing or empty.</strong> The catalogue lists {len(ALL_SPORTS)} sports; the "
+    f"results cover {len(MATRIX.columns)}, and only {MEDAL_SPORTS} of those awarded a medal. " +
     (lambda names: (", ".join(names[:-1]) + " and " + names[-1]).capitalize())(
         [SPORT_NAME(c).lower() for c in missing_sports]) +
     " have no events in the feed at all, and handball's one recorded fixture has no result. "
@@ -511,7 +541,7 @@ fig = go.Figure(go.Bar(
     hovertemplate="%{customdata}: %{x} medals<extra></extra>",
 ))
 ui.base_layout(fig, height=420, margin=dict(t=18, r=120, b=44, l=54))
-fig.update_xaxes(title="Medals awarded", range=[0, 118])
+fig.update_xaxes(title="Medals awarded", range=[0, float(p["Medals"].max()) * 1.18])
 ui.chart(fig, key="pool")
 ui.caption("What it shows",
            f"Athletics and swimming alone account for {big_two_share:.0f}% of the table. The five smallest sports "
@@ -627,7 +657,8 @@ ui.body(
 ui.section("s10", "10", "Next", "What I would change about how the table is published")
 ui.body(
     "<strong>1. Publish a sport-by-sport table next to the official one.</strong> The most interesting fact in this "
-    "dataset — 14 sports against 4 — is invisible in a single rank column, and readers cannot recover it from totals."
+    f"dataset — {OAU_SPORTS} sports against {UG_SPORTS} — is invisible in a single rank column, and readers "
+    "cannot recover it from totals."
 )
 ui.body(
     "<strong>2. Record entries per school and per sport.</strong> One extra column would turn the medal table into a "

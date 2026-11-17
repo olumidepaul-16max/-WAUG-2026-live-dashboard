@@ -11,6 +11,11 @@ ui.page_css()
 
 rep = load_report()
 meta = "" if rep.get("error") else f"{rep['school_count']} universities · {rep['total_medals']} medals"
+gap_txt = ""
+if not rep.get("error") and not rep["table"].empty:
+    _t = rep["table"].set_index("Code")
+    if "OAU" in _t.index and "UG-GH" in _t.index:
+        gap_txt = f"the host's {int(_t.loc['OAU', 'Total'] - _t.loc['UG-GH', 'Total'])}-medal"
 
 ui.eyebrow("WAUG 2026 &nbsp;·&nbsp; Team")
 ui.display("One analyst, two views of the same Games.")
@@ -43,7 +48,7 @@ c.metric("Data", "4 files", meta or "medals, pools, matches")
 ui.section("t1", "01", "Work", "What was built")
 ui.body(
     "<strong>The report.</strong> A single long read that asks what produced the medal table rather than what it "
-    "shows: how concentrated the medals were, whether breadth or conversion won them, where the host's 63-medal "
+    f"shows: how concentrated the medals were, whether breadth or conversion won them, where {gap_txt or 'the host’s'} "
     "lead came from, how sensitive the ranking is to the scoring rule, and what the table leaves out."
 )
 ui.body(
@@ -52,8 +57,8 @@ ui.body(
     "Deep links work, so a single sport can be shared (<code>?sport=FBL</code>)."
 )
 ui.body(
-    "<strong>The data page.</strong> The medal table, all 478 medal rows, the sport pools and every match as CSV, "
-    "with the endpoints listed so the figures can be reproduced."
+    f"<strong>The data page.</strong> The medal table, all {rep['total_medals'] if not rep.get('error') else ''} "
+    "medal rows, the sport pools and every match as CSV, with the endpoints listed so the figures can be reproduced."
 )
 
 ui.section("t2", "02", "Stack", "How it is put together")

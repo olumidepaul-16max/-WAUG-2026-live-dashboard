@@ -15,7 +15,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 import ui
-from waug_core import AUTHOR, competition_rank, load_report
+from waug_core import AUTHORS, competition_rank, load_report
 
 ui.page_css()
 
@@ -169,7 +169,7 @@ with b3:
     st.page_link("data.py", label="Download the data", icon="🗂️")
 
 ui.byline(
-    f"By <b>{AUTHOR}</b> &nbsp;·&nbsp; Data: <b>AlliSports Data API</b> &nbsp;·&nbsp; "
+    f"By <b>{AUTHORS}</b> &nbsp;·&nbsp; Data: <b>AlliSports Data API</b> &nbsp;·&nbsp; "
     f"{rep['school_count']} universities, {rep['medalled_events']} events with results, {rep['match_count']} matches"
 )
 
@@ -680,13 +680,13 @@ ui.body(
 # ============================================================
 # 11. AUTHOR
 # ============================================================
-ui.section("s11", "11", "Author", "Who built this")
+ui.section("s11", "11", "Authors", "Who built this")
 st.markdown(
     f"""
 <div class="author">
-  <div class="avatar">OP</div>
+  <div class="avatar">WAUG</div>
   <div>
-    <h3>{AUTHOR}</h3>
+    <h3>{AUTHORS}</h3>
     <div class="role">Analysis · dashboard · report</div>
     <p>Collected the data from the AlliSports Data API, rebuilt the medal table from the individual results
     to check it, ran the comparisons and built both the dashboard and this report.</p>
@@ -732,6 +732,6 @@ dashboard sidebar.
     )
 
 ui.footer(
-    f"Report and dashboard by <b>{AUTHOR}</b> &nbsp;·&nbsp; Data: <b>AlliSports Data</b> — official data partner "
+    f"Report and dashboard by <b>{AUTHORS}</b> &nbsp;·&nbsp; Data: <b>AlliSports Data</b> — official data partner "
     "of WAUG 2026 &nbsp;·&nbsp; Games: 2–12 October 2026, Obafemi Awolowo University, Ile-Ife"
 )

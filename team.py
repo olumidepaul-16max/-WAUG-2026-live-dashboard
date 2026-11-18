@@ -5,7 +5,7 @@ WAUG 2026 — team page.
 import streamlit as st
 
 import ui
-from waug_core import AUTHOR, load_report
+from waug_core import AUTHORS, load_report
 
 ui.page_css()
 
@@ -18,7 +18,7 @@ if not rep.get("error") and not rep["table"].empty:
         gap_txt = f"the host's {int(_t.loc['OAU', 'Total'] - _t.loc['UG-GH', 'Total'])}-medal"
 
 ui.eyebrow("WAUG 2026 &nbsp;·&nbsp; Team")
-ui.display("One analyst, two views of the same Games.")
+ui.display("Three analysts, two views of the same Games.")
 ui.lede(
     "A written report for reading and a live dashboard for checking. Both read the same cached feed, so a "
     "number in the prose is the number in the table."
@@ -27,9 +27,9 @@ ui.lede(
 st.markdown(
     f"""
 <div class="author" style="padding:26px 26px;">
-  <div class="avatar" style="width:72px;height:72px;font-size:1.35rem;">OP</div>
+  <div class="avatar" style="width:72px;height:72px;font-size:.95rem;">WAUG</div>
   <div>
-    <h3 style="font-size:1.5rem;">{AUTHOR}</h3>
+    <h3 style="font-size:1.5rem;">{AUTHORS}</h3>
     <div class="role">Data analysis · dashboard · report</div>
     <p style="font-size:.94rem;">Collected the data from the AlliSports Data API, rebuilt the medal table from the
     individual results to verify it, ran the comparisons in the report and built both the dashboard and this
@@ -73,11 +73,11 @@ ui.section("t3", "03", "Credit", "Data and attribution")
 ui.body(
     "Results, schedules and medal standings come from the <strong>AlliSports Data API</strong>, the official data "
     "partner of WAUG 2026. The analysis, the dashboard and the report are independent work built on that feed. "
-    "Any error in the interpretation is mine, not the data partner's."
+    "Any error in the interpretation is ours, not the data partner's."
 )
 ui.byline(
     "Games: 2–12 October 2026 &nbsp;·&nbsp; Obafemi Awolowo University, Ile-Ife &nbsp;·&nbsp; "
     "15th West African University Games"
 )
 
-ui.footer(f"Report and dashboard by <b>{AUTHOR}</b> &nbsp;·&nbsp; Data: <b>AlliSports Data</b>")
+ui.footer(f"Report and dashboard by <b>{AUTHORS}</b> &nbsp;·&nbsp; Data: <b>AlliSports Data</b>")

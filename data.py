@@ -12,7 +12,7 @@ import streamlit as st
 
 import ui
 from waug_core import (
-    AUTHOR,
+    AUTHORS,
     api_get, get_analytics, get_competition, get_sport_events,
     load_core, load_report, medals_from_rows, pool_from_selection, report_tables,
 )
@@ -149,7 +149,7 @@ ui.lede(
     "ranking; the results file is one row per medal with the school and the athlete, so any number in the "
     "report can be reproduced from it."
 )
-ui.byline(f"Prepared by <b>{AUTHOR}</b> &nbsp;·&nbsp; data partner: <b>AlliSports Data</b>")
+ui.byline(f"Prepared by <b>{AUTHORS}</b> &nbsp;·&nbsp; data partner: <b>AlliSports Data</b>")
 
 if filtered:
     chips = []
@@ -284,5 +284,5 @@ if filtered:
     st.caption("These checks cover the whole Games, not the current selection.")
 
 ui.footer(
-    f"Data: <b>AlliSports Data</b> — official data partner of WAUG 2026 &nbsp;·&nbsp; prepared by <b>{AUTHOR}</b>"
+    f"Data: <b>AlliSports Data</b> — official data partner of WAUG 2026 &nbsp;·&nbsp; prepared by <b>{AUTHORS}</b>"
 )

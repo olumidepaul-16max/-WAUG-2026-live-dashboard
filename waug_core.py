@@ -43,6 +43,8 @@ INK = "#E2E8F7"
 MUTED = "#8FA3D4"
 
 AUTHOR = "Olumide Paul Opemipo"
+AUTHORS = ("Olumide Paul Opemipo, Oke Pamilerin Samuel "
+           "&amp; Ayomide Oladosu")
 
 SPORT_EMOJI = {
     "ATH": "🏃", "BDM": "🏸", "BKB": "🏀", "BOX": "🥊", "CHS": "♟️", "ESP": "🎮",

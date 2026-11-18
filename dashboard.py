@@ -118,16 +118,34 @@ st.markdown("""
 }
 [data-testid="stSidebar"] .stButton > button:hover * { color:#E8B84B !important; }
 
-/* fallback for the icon font, which is often blocked: never show raw ligature names */
-[data-testid="stIconMaterial"] { font-size:0 !important; }
+/* Streamlit draws icons as font ligatures. When the icon font is blocked the raw
+   names (keyboard_double_arrow_left, keyboard_arrow_right) show up as text, so the
+   ligatures are hidden and plain chevrons are drawn instead. */
+[data-testid="stIconMaterial"],
+span[translate="no"][aria-hidden="true"],
+.material-icons, .material-symbols-rounded, .material-symbols-outlined {
+  font-size:0 !important;
+}
 [data-testid="stIconMaterial"]::before {
   content:"›"; font-size:17px; line-height:1; color:#E8B84B;
 }
-[data-testid="stSidebarCollapseButton"] [data-testid="stIconMaterial"]::before {
-  content:"«"; font-size:20px; color:#C9D5EE;
+/* sidebar toggles: hide the ligature, draw the arrow on the button itself */
+[data-testid="stSidebarCollapseButton"] [data-testid="stIconMaterial"],
+[data-testid="stExpandSidebarButton"] [data-testid="stIconMaterial"] {
+  display:none !important;
 }
-[data-testid="stSidebarCollapseButton"] button[aria-label="Expand sidebar"] [data-testid="stIconMaterial"]::before {
-  content:"»";
+[data-testid="stSidebarCollapseButton"] button::before {
+  content:"«"; font-size:20px; line-height:1; color:#C9D5EE;
+}
+[data-testid="stExpandSidebarButton"] button::before,
+[data-testid="stExpandSidebarButton"]::before {
+  content:"»"; font-size:20px; line-height:1; color:#C9D5EE;
+}
+/* ================= MISC ================= */
+.live-pill {
+    display:inline-flex; align-items:center; gap:8px; background:rgba(206,17,38,.16); color:#FF8A94;
+    border:1px solid rgba(206,17,38,.45); border-radius:999px; padding:5px 14px;
+    font-weight:700; font-size:.82rem;
 }
 .live-dot { width:9px; height:9px; border-radius:50%; background:#F0616D; animation:pulse 1.3s infinite; }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.25} }

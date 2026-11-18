@@ -179,16 +179,31 @@ h2.sec-h {
 }
 [data-testid="stSidebar"] .stButton > button:hover * { color:#E8B84B !important; }
 
-/* fallback for the icon font, which is often blocked: never show raw ligature names */
-[data-testid="stIconMaterial"] { font-size:0 !important; }
+/* Streamlit draws icons as font ligatures. When the icon font is blocked the raw
+   names (keyboard_double_arrow_left, keyboard_arrow_right) show up as text, so the
+   ligatures are hidden and plain chevrons are drawn instead. */
+[data-testid="stIconMaterial"],
+span[translate="no"][aria-hidden="true"],
+.material-icons, .material-symbols-rounded, .material-symbols-outlined {
+  font-size:0 !important;
+}
 [data-testid="stIconMaterial"]::before {
   content:"›"; font-size:17px; line-height:1; color:#E8B84B;
 }
-[data-testid="stSidebarCollapseButton"] [data-testid="stIconMaterial"]::before {
-  content:"«"; font-size:20px; color:#C9D5EE;
+/* sidebar toggles: hide the ligature, draw the arrow on the button itself */
+[data-testid="stSidebarCollapseButton"] [data-testid="stIconMaterial"],
+[data-testid="stExpandSidebarButton"] [data-testid="stIconMaterial"] {
+  display:none !important;
 }
-[data-testid="stSidebarCollapseButton"] button[aria-label="Expand sidebar"] [data-testid="stIconMaterial"]::before {
-  content:"»";
+[data-testid="stSidebarCollapseButton"] button::before {
+  content:"«"; font-size:20px; line-height:1; color:#C9D5EE;
+}
+[data-testid="stExpandSidebarButton"] button::before,
+[data-testid="stExpandSidebarButton"]::before {
+  content:"»"; font-size:20px; line-height:1; color:#C9D5EE;
+}
+.filter-bar {
+  display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin: 0 0 22px;
 }
 .filter-bar .pill { font-size:.74rem; }
 .filter-note { color:#8798C4; font-size:.78rem; margin-left:4px; }

@@ -2,8 +2,9 @@
 WAUG 2026 — data page.
 
 Everything behind the report, downloadable, plus the endpoint list so the
-work can be checked or repeated. The sidebar filters mirror the dashboard's:
-sport, category and country, applied to every table and every download.
+work can be checked or repeated. The filters sit in the page itself because
+they change what the files hold: sport, category and country narrow all four
+tables and all four downloads.
 """
 
 import pandas as pd
@@ -34,46 +35,66 @@ name_country = dict(zip(tables["medal"]["School"], tables["medal"]["Country"]))
 COUNTRIES = {"NG": "Nigeria", "GH": "Ghana"}
 
 # ============================================================
-# SIDEBAR — filters (same set as the dashboard)
+# PAGE HEAD
 # ============================================================
-st.sidebar.markdown('<div class="filters-h">Filters</div>', unsafe_allow_html=True)
-
-sport_pick = st.sidebar.selectbox(
-    "Sport", ["ALL"] + sorted(sports_map, key=lambda c: sports_map[c]),
-    format_func=lambda c: "All sports" if c == "ALL"
-    else f"{SPORT_EMOJI.get(c, '🏅')} {sports_map[c]}",
-    key="data_sport",
+ui.eyebrow("WAUG 2026 &nbsp;·&nbsp; Data &nbsp;·&nbsp; AlliSports Data API")
+ui.display("Everything the report is built on.")
+ui.lede(
+    "Four files, all rebuilt from the same feed the dashboard reads. The medal table is the official "
+    "ranking; the results file is one row per medal with the school and the athlete, so any number in the "
+    "report can be reproduced from it."
 )
+ui.byline(f"Prepared by <b>{AUTHOR}</b> &nbsp;·&nbsp; data partner: <b>AlliSports Data</b>")
 
-category_source = (
-    tables["results"] if sport_pick == "ALL"
-    else tables["results"][tables["results"]["Sport"] == sports_map[sport_pick]]
-)
-categories = ["All categories"] + sorted(
-    {str(c) for c in category_source["Event"].dropna() if str(c).strip()}, key=str.lower
-)
-category = st.sidebar.selectbox("Category", categories, key=f"data_category_{sport_pick}")
+ui.toc([
+    ("d0", "Downloads"),
+    ("d1", "What each file holds"),
+    ("d2", "The endpoints"),
+    ("d3", "Checks"),
+])
 
-countries = ["All countries"] + sorted({c for c in code_country.values() if c})
-country = st.sidebar.selectbox(
-    "Country", countries, key="data_country",
-    format_func=lambda c: COUNTRIES.get(c, c),
-)
-
-st.sidebar.markdown(
-    '<div class="filters-note">Country comes from the AlliSports Data feed.</div>',
-    unsafe_allow_html=True,
-)
-
-if st.sidebar.button("Refresh data", use_container_width=True):
-    load_core.clear()
-    api_get.clear()
-    get_competition.clear()
-    get_analytics.clear()
-    get_sport_events.clear()
-    load_report.clear()
-    report_tables.clear()
-    st.rerun()
+# ============================================================
+# FILTERS — part of the page, because they change what the files hold
+# ============================================================
+with st.container(border=True):
+    ui.chart_title("Narrow the files")
+    st.caption(
+        "Pick a sport, one of its categories, or a country. Every table and every "
+        "download below follows the choice; leave them alone for the whole Games."
+    )
+    f1, f2, f3, f4 = st.columns([1.5, 1.3, 1.1, 0.9], vertical_alignment="bottom")
+    with f1:
+        sport_pick = st.selectbox(
+            "Sport", ["ALL"] + sorted(sports_map, key=lambda c: sports_map[c]),
+            format_func=lambda c: "All sports" if c == "ALL"
+            else f"{SPORT_EMOJI.get(c, '🏅')} {sports_map[c]}",
+            key="data_sport",
+        )
+    with f2:
+        category_source = (
+            tables["results"] if sport_pick == "ALL"
+            else tables["results"][tables["results"]["Sport"] == sports_map[sport_pick]]
+        )
+        categories = ["All categories"] + sorted(
+            {str(c) for c in category_source["Event"].dropna() if str(c).strip()}, key=str.lower
+        )
+        category = st.selectbox("Category", categories, key=f"data_category_{sport_pick}")
+    with f3:
+        countries = ["All countries"] + sorted({c for c in code_country.values() if c})
+        country = st.selectbox(
+            "Country", countries, key="data_country",
+            format_func=lambda c: COUNTRIES.get(c, c),
+        )
+    with f4:
+        if st.button("Refresh", use_container_width=True):
+            load_core.clear()
+            api_get.clear()
+            get_competition.clear()
+            get_analytics.clear()
+            get_sport_events.clear()
+            load_report.clear()
+            report_tables.clear()
+            st.rerun()
 
 # ============================================================
 # APPLY FILTERS
@@ -108,7 +129,6 @@ if country != "All countries":
         | matches["Away"].map(name_country).eq(country)
     ]
 
-
 official_medals = tables["medal"][
     ["Rank", "School", "Code", "Gold", "Silver", "Bronze", "Total", "Sports", "Share"]
 ].copy()
@@ -127,25 +147,6 @@ pool["Share"] = pool["Share"].round(1)
 live_medals = len(results)
 event_total = len(events_scope)
 
-# ============================================================
-# PAGE
-# ============================================================
-ui.toc([
-    ("d0", "Downloads"),
-    ("d1", "What each file holds"),
-    ("d2", "The endpoints"),
-    ("d3", "Checks"),
-])
-
-ui.eyebrow("WAUG 2026 &nbsp;·&nbsp; Data &nbsp;·&nbsp; AlliSports Data API")
-ui.display("Everything the report is built on.")
-ui.lede(
-    "Four files, all rebuilt from the same feed the dashboard reads. The medal table is the official "
-    "ranking; the results file is one row per medal with the school and the athlete, so any number in the "
-    "report can be reproduced from it."
-)
-ui.byline(f"Prepared by <b>{AUTHOR}</b> &nbsp;·&nbsp; data partner: <b>AlliSports Data</b>")
-
 if filtered:
     chips = []
     if sport_pick != "ALL":
@@ -158,7 +159,13 @@ if filtered:
     st.markdown(
         f'<div class="filter-bar">{pills}'
         f'<span class="filter-note">{live_medals} medal row(s) across {event_total} event(s) '
-        f'in this selection — tables and downloads follow it</span></div>',
+        f'in this selection</span></div>',
+        unsafe_allow_html=True,
+    )
+else:
+    st.markdown(
+        f'<div class="filter-bar"><span class="pill">Whole Games</span>'
+        f'<span class="filter-note">{live_medals} medal rows across {event_total} events</span></div>',
         unsafe_allow_html=True,
     )
 

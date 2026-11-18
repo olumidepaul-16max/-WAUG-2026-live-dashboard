@@ -107,16 +107,27 @@ st.markdown("""
 [data-testid="stSidebar"] [data-baseweb="select"] > div:hover { border-color:rgba(232,184,75,.6) !important; }
 [data-testid="stSidebar"] [data-baseweb="select"] span { font-size:.88rem !important; }
 [data-testid="stSidebar"] .stButton > button {
-    background:#E9EEFB !important; color:#0A1533 !important; border:1px solid #E9EEFB !important;
+    background: rgba(232,184,75,.10) !important; color:#F0E6CE !important;
+    border:1px solid rgba(232,184,75,.55) !important;
     font-weight:700 !important; font-size:.86rem !important; border-radius:10px !important;
     padding:9px 14px !important;
 }
-[data-testid="stSidebar"] .stButton > button:hover { background:#fff !important; border-color:#fff !important; }
+[data-testid="stSidebar"] .stButton > button * { color:#F0E6CE !important; }
+[data-testid="stSidebar"] .stButton > button:hover {
+    background: rgba(232,184,75,.20) !important; border-color:#E8B84B !important;
+}
+[data-testid="stSidebar"] .stButton > button:hover * { color:#E8B84B !important; }
 
-/* ================= MISC ================= */
-.live-pill {
-    display:inline-flex; align-items:center; gap:8px; background:rgba(206,17,38,.16); color:#FF8A94;
-    border:1px solid rgba(206,17,38,.45); border-radius:999px; padding:5px 14px; font-weight:700; font-size:.82rem;
+/* fallback for the icon font, which is often blocked: never show raw ligature names */
+[data-testid="stIconMaterial"] { font-size:0 !important; }
+[data-testid="stIconMaterial"]::before {
+  content:"›"; font-size:17px; line-height:1; color:#E8B84B;
+}
+[data-testid="stSidebarCollapseButton"] [data-testid="stIconMaterial"]::before {
+  content:"«"; font-size:20px; color:#C9D5EE;
+}
+[data-testid="stSidebarCollapseButton"] button[aria-label="Expand sidebar"] [data-testid="stIconMaterial"]::before {
+  content:"»";
 }
 .live-dot { width:9px; height:9px; border-radius:50%; background:#F0616D; animation:pulse 1.3s infinite; }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.25} }

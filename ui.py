@@ -168,13 +168,27 @@ h2.sec-h {
 [data-testid="stSidebar"] [data-baseweb="select"] > div:hover { border-color:rgba(232,184,75,.6) !important; }
 [data-testid="stSidebar"] [data-baseweb="select"] span { font-size:.87rem !important; }
 [data-testid="stSidebar"] .stButton > button {
-  background:#E9EEFB !important; color:#0A1533 !important; border:1px solid #E9EEFB !important;
+  background: rgba(232,184,75,.10) !important; color:#F0E6CE !important;
+  border:1px solid rgba(232,184,75,.55) !important;
   font-weight:700 !important; font-size:.85rem !important; border-radius:10px !important;
   padding:9px 14px !important;
 }
-[data-testid="stSidebar"] .stButton > button:hover { background:#fff !important; border-color:#fff !important; }
-.filter-bar {
-  display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin: 0 0 22px;
+[data-testid="stSidebar"] .stButton > button * { color:#F0E6CE !important; }
+[data-testid="stSidebar"] .stButton > button:hover {
+  background: rgba(232,184,75,.20) !important; border-color:#E8B84B !important;
+}
+[data-testid="stSidebar"] .stButton > button:hover * { color:#E8B84B !important; }
+
+/* fallback for the icon font, which is often blocked: never show raw ligature names */
+[data-testid="stIconMaterial"] { font-size:0 !important; }
+[data-testid="stIconMaterial"]::before {
+  content:"›"; font-size:17px; line-height:1; color:#E8B84B;
+}
+[data-testid="stSidebarCollapseButton"] [data-testid="stIconMaterial"]::before {
+  content:"«"; font-size:20px; color:#C9D5EE;
+}
+[data-testid="stSidebarCollapseButton"] button[aria-label="Expand sidebar"] [data-testid="stIconMaterial"]::before {
+  content:"»";
 }
 .filter-bar .pill { font-size:.74rem; }
 .filter-note { color:#8798C4; font-size:.78rem; margin-left:4px; }

@@ -2,9 +2,9 @@
 WAUG 2026 — data page.
 
 Everything behind the report, downloadable, plus the endpoint list so the
-work can be checked or repeated. The filters sit in the page itself because
-they change what the files hold: sport, category and country narrow all four
-tables and all four downloads.
+work can be checked or repeated. The sidebar carries filters built from what
+the files themselves hold — school, medal colour, gender, event type — and
+every table and download follows them.
 """
 
 import pandas as pd
@@ -12,7 +12,7 @@ import streamlit as st
 
 import ui
 from waug_core import (
-    AUTHOR, SPORT_EMOJI,
+    AUTHOR,
     api_get, get_analytics, get_competition, get_sport_events,
     load_core, load_report, medals_from_rows, pool_from_selection, report_tables,
 )
@@ -30,103 +30,88 @@ if tables.get("error"):
     st.stop()
 
 sports_map = {s["code"]: s["name"] for s in rep["sports"]}
-code_country = dict(zip(tables["medal"]["Code"], tables["medal"]["Country"]))
-name_country = dict(zip(tables["medal"]["School"], tables["medal"]["Country"]))
-COUNTRIES = {"NG": "Nigeria", "GH": "Ghana"}
 
 # ============================================================
-# PAGE HEAD
+# SIDEBAR — filters drawn from the contents of the files
 # ============================================================
-ui.eyebrow("WAUG 2026 &nbsp;·&nbsp; Data &nbsp;·&nbsp; AlliSports Data API")
-ui.display("Everything the report is built on.")
-ui.lede(
-    "Four files, all rebuilt from the same feed the dashboard reads. The medal table is the official "
-    "ranking; the results file is one row per medal with the school and the athlete, so any number in the "
-    "report can be reproduced from it."
+st.sidebar.markdown('<div class="filters-h">Filters</div>', unsafe_allow_html=True)
+
+universities = sorted(tables["medal"]["School"].dropna().unique())
+university = st.sidebar.selectbox(
+    "University", ["All universities"] + universities, key="data_uni",
 )
-ui.byline(f"Prepared by <b>{AUTHOR}</b> &nbsp;·&nbsp; data partner: <b>AlliSports Data</b>")
 
-ui.toc([
-    ("d0", "Downloads"),
-    ("d1", "What each file holds"),
-    ("d2", "The endpoints"),
-    ("d3", "Checks"),
-])
+genders = sorted({str(g) for g in tables["results"]["Gender"].dropna() if str(g).strip()})
+gender = st.sidebar.selectbox(
+    "Gender", ["All genders"] + genders, key="data_gender",
+    format_func=lambda g: "All genders" if g == "All genders" else g.capitalize(),
+)
 
-# ============================================================
-# FILTERS — part of the page, because they change what the files hold
-# ============================================================
-with st.container(border=True):
-    ui.chart_title("Narrow the files")
-    st.caption(
-        "Pick a sport, one of its categories, or a country. Every table and every "
-        "download below follows the choice; leave them alone for the whole Games."
-    )
-    f1, f2, f3, f4 = st.columns([1.5, 1.3, 1.1, 0.9], vertical_alignment="bottom")
-    with f1:
-        sport_pick = st.selectbox(
-            "Sport", ["ALL"] + sorted(sports_map, key=lambda c: sports_map[c]),
-            format_func=lambda c: "All sports" if c == "ALL"
-            else f"{SPORT_EMOJI.get(c, '🏅')} {sports_map[c]}",
-            key="data_sport",
-        )
-    with f2:
-        category_source = (
-            tables["results"] if sport_pick == "ALL"
-            else tables["results"][tables["results"]["Sport"] == sports_map[sport_pick]]
-        )
-        categories = ["All categories"] + sorted(
-            {str(c) for c in category_source["Event"].dropna() if str(c).strip()}, key=str.lower
-        )
-        category = st.selectbox("Category", categories, key=f"data_category_{sport_pick}")
-    with f3:
-        countries = ["All countries"] + sorted({c for c in code_country.values() if c})
-        country = st.selectbox(
-            "Country", countries, key="data_country",
-            format_func=lambda c: COUNTRIES.get(c, c),
-        )
-    with f4:
-        if st.button("Refresh", use_container_width=True):
-            load_core.clear()
-            api_get.clear()
-            get_competition.clear()
-            get_analytics.clear()
-            get_sport_events.clear()
-            load_report.clear()
-            report_tables.clear()
-            st.rerun()
+kinds = sorted({str(k) for k in tables["results"]["Kind"].dropna() if str(k).strip()})
+kind = st.sidebar.selectbox(
+    "Event type", ["All types"] + kinds, key="data_kind",
+    format_func=lambda k: "All types" if k == "All types" else k.capitalize(),
+)
+
+medal_pick = st.sidebar.selectbox(
+    "Medal", ["All medals", "Gold", "Silver", "Bronze"], key="data_medal",
+)
+
+st.sidebar.markdown(
+    '<div class="filters-note">These follow the files below: school, medal colour, '
+    'gender and individual vs team.</div>',
+    unsafe_allow_html=True,
+)
+
+if st.sidebar.button("Refresh data", use_container_width=True):
+    load_core.clear()
+    api_get.clear()
+    get_competition.clear()
+    get_analytics.clear()
+    get_sport_events.clear()
+    load_report.clear()
+    report_tables.clear()
+    st.rerun()
 
 # ============================================================
 # APPLY FILTERS
 # ============================================================
-filtered = sport_pick != "ALL" or category != "All categories" or country != "All countries"
+filtered = (
+    university != "All universities" or gender != "All genders"
+    or kind != "All types" or medal_pick != "All medals"
+)
 
 results = tables["results"].copy()
 matches = tables["matches"].copy()
-pool_all = tables["pool"].copy()
 
-if sport_pick != "ALL":
-    results = results[results["Sport"] == sports_map[sport_pick]]
-    matches = matches[matches["Sport"] == sport_pick]
-    pool_all = pool_all[pool_all["Code"] == sport_pick]
-
-if category != "All categories":
-    results = results[results["Event"].astype(str).str.lower() == category.lower()]
-
-# the event list defines how many events the medals are measured against
-events_scope = tables["events"].copy()
-if sport_pick != "ALL":
-    events_scope = events_scope[events_scope["Code"] == sport_pick]
-if category != "All categories":
-    events_scope = events_scope[
-        events_scope["Event"].astype(str).str.lower() == category.lower()
+uni_code = None
+if university != "All universities":
+    match_row = tables["medal"][tables["medal"]["School"] == university]
+    uni_code = match_row["Code"].iloc[0] if not match_row.empty else None
+    if uni_code:
+        results = results[results["University code"] == uni_code]
+    matches = matches[
+        matches["Home"].eq(university) | matches["Away"].eq(university)
     ]
 
-if country != "All countries":
-    results = results[results["University code"].map(code_country).eq(country)]
-    matches = matches[
-        matches["Home"].map(name_country).eq(country)
-        | matches["Away"].map(name_country).eq(country)
+if gender != "All genders":
+    results = results[results["Gender"].astype(str).str.lower() == gender.lower()]
+
+if kind != "All types":
+    results = results[results["Kind"].astype(str).str.lower() == kind.lower()]
+
+if medal_pick != "All medals":
+    results = results[results["Slot"].astype(str).str.startswith(medal_pick.lower())]
+
+# events in scope drive the medals-per-event denominator
+events_scope = tables["events"].copy()
+if gender != "All genders":
+    events_scope = events_scope[
+        events_scope["Gender"].astype(str).str.lower() == gender.lower()
+    ]
+if kind != "All types":
+    events_scope = events_scope[
+        events_scope["Kind"].astype(str).str.lower() == kind.lower()
     ]
 
 official_medals = tables["medal"][
@@ -139,35 +124,52 @@ if filtered:
     pool = pool_from_selection(results, events_scope, sports_map)
 else:
     medal = official_medals
-    pool = pool_all.copy()
+    pool = tables["pool"].copy()
 
 pool["PerEvent"] = pool["PerEvent"].round(2)
 pool["Share"] = pool["Share"].round(1)
 
-live_medals = len(results)
+medal_rows = len(results)
 event_total = len(events_scope)
+
+# ============================================================
+# PAGE
+# ============================================================
+ui.toc([
+    ("d0", "Downloads"),
+    ("d1", "What each file holds"),
+    ("d2", "The endpoints"),
+    ("d3", "Checks"),
+])
+
+ui.eyebrow("WAUG 2026 &nbsp;·&nbsp; Data &nbsp;·&nbsp; AlliSports Data API")
+ui.display("Everything the report is built on.")
+ui.lede(
+    "Four files, all rebuilt from the same feed the dashboard reads. The medal table is the official "
+    "ranking; the results file is one row per medal with the school and the athlete, so any number in the "
+    "report can be reproduced from it."
+)
+ui.byline(f"Prepared by <b>{AUTHOR}</b> &nbsp;·&nbsp; data partner: <b>AlliSports Data</b>")
 
 if filtered:
     chips = []
-    if sport_pick != "ALL":
-        chips.append(f"{SPORT_EMOJI.get(sport_pick, '🏅')} {sports_map[sport_pick]}")
-    if category != "All categories":
-        chips.append(category)
-    if country != "All countries":
-        chips.append(COUNTRIES.get(country, country))
+    if university != "All universities":
+        chips.append(university)
+    if medal_pick != "All medals":
+        chips.append(f"{medal_pick} only")
+    if gender != "All genders":
+        chips.append(gender.capitalize())
+    if kind != "All types":
+        chips.append(f"{kind.capitalize()} events")
     pills = "".join(f'<span class="pill">{c}</span>' for c in chips)
-    st.markdown(
-        f'<div class="filter-bar">{pills}'
-        f'<span class="filter-note">{live_medals} medal row(s) across {event_total} event(s) '
-        f'in this selection</span></div>',
-        unsafe_allow_html=True,
-    )
+    note = f"{medal_rows} medal row(s) across {event_total} event(s) in this selection"
 else:
-    st.markdown(
-        f'<div class="filter-bar"><span class="pill">Whole Games</span>'
-        f'<span class="filter-note">{live_medals} medal rows across {event_total} events</span></div>',
-        unsafe_allow_html=True,
-    )
+    pills = '<span class="pill">Whole Games</span>'
+    note = f"{medal_rows} medal rows across {event_total} events"
+st.markdown(
+    f'<div class="filter-bar">{pills}<span class="filter-note">{note}</span></div>',
+    unsafe_allow_html=True,
+)
 
 # ---------- downloads ----------
 st.markdown('<div id="d0"></div>', unsafe_allow_html=True)
@@ -198,9 +200,9 @@ with c4:
 if filtered:
     st.caption(
         "With a filter on, the medal table is re-ranked inside the selection (gold, then "
-        "silver, then bronze). Sport pools keep the official event count for the sport or "
-        "category in scope and count only the medals that remain, so medals-per-event falls "
-        "with the filter. Clear the filters for the official Games figures."
+        "silver, then bronze) and sport pools count only the medals that remain against the "
+        "events in scope, so medals-per-event falls with the filter. Matches follow the "
+        "university filter only. Clear the filters for the official Games figures."
     )
 
 # ---------- file descriptions ----------
@@ -208,11 +210,11 @@ ui.section("d1", "01", "Files", "What each file holds")
 ui.body(
     f"The <strong>medal table</strong> has one row per university with the rank, the three medal "
     "counts, the total, the number of sports medalled in and the share of that total which was gold. "
-    f"The <strong>medal file</strong> has one row per medal ({live_medals} rows) with the sport, event, "
+    f"The <strong>medal file</strong> has one row per medal ({medal_rows} rows) with the sport, event, "
     "slot, university and athlete where the feed names one — this is the file to pivot from."
 )
 ui.body(
-    f"<strong>Sport pools</strong> counts events and medals per sport, including medals per event, which is how the "
+    "<strong>Sport pools</strong> counts events and medals per sport, including medals per event, which is how the "
     "taekwondo and badminton difference in section 7 of the report is measured. <strong>Matches</strong> carries the "
     f"final score and, where it exists, the penalty score for {len(matches)} fixtures."
 )
@@ -240,6 +242,8 @@ with tabs[3]:
         st.info("No matches in this selection.")
     else:
         st.dataframe(matches, hide_index=True, use_container_width=True)
+    if filtered and (gender != "All genders" or kind != "All types" or medal_pick != "All medals"):
+        st.caption("Matches are fixtures, so only the university filter applies to this table.")
 
 # ---------- endpoints ----------
 ui.section("d2", "02", "Source", "The endpoints behind it")

@@ -147,14 +147,37 @@ h2.sec-h {
   background:#081226; border-right:1px solid rgba(232,184,75,.14);
 }
 [data-testid="stSidebar"] * { font-family:'Inter', sans-serif; }
-.toc { margin: 4px 0 10px; }
-.toc a {
+.toc { margin: 4px 0 10px; }.toc a {
   display:block; color:#A9B8DA !important; text-decoration:none; font-size:.815rem;
   padding:5px 0 5px 11px; border-left:2px solid transparent; line-height:1.4;
 }
 .toc a:hover { color:#fff !important; border-left-color:var(--gold); background:rgba(232,184,75,.05); }
 .toc-cap { font-size:.64rem; font-weight:800; letter-spacing:1.6px; text-transform:uppercase;
            color:var(--gold); margin: 8px 0 6px; }
+
+/* ---------- filters ---------- */
+.filters-h { color:#fff; font-size:1.3rem; font-weight:800; letter-spacing:-.3px; margin:0 0 14px; }
+.filters-note { color:#9DB0DA; font-size:.78rem; line-height:1.55; margin:10px 0 14px; }
+[data-testid="stSidebar"] .stSelectbox label p {
+  color:#E9EEFB !important; font-size:.86rem !important; font-weight:600 !important;
+}
+[data-testid="stSidebar"] [data-baseweb="select"] > div {
+  background:#0F1D42 !important; border:1px solid rgba(255,255,255,.20) !important;
+  border-radius:10px !important; min-height:44px;
+}
+[data-testid="stSidebar"] [data-baseweb="select"] > div:hover { border-color:rgba(232,184,75,.6) !important; }
+[data-testid="stSidebar"] [data-baseweb="select"] span { font-size:.87rem !important; }
+[data-testid="stSidebar"] .stButton > button {
+  background:#E9EEFB !important; color:#0A1533 !important; border:1px solid #E9EEFB !important;
+  font-weight:700 !important; font-size:.85rem !important; border-radius:10px !important;
+  padding:9px 14px !important;
+}
+[data-testid="stSidebar"] .stButton > button:hover { background:#fff !important; border-color:#fff !important; }
+.filter-bar {
+  display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin: 0 0 22px;
+}
+.filter-bar .pill { font-size:.74rem; }
+.filter-note { color:#8798C4; font-size:.78rem; margin-left:4px; }
 
 /* ---------- buttons ---------- */
 .btn-row { display:flex; gap:10px; flex-wrap:wrap; margin: 4px 0 10px; }

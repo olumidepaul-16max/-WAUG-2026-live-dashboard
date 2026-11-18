@@ -478,6 +478,78 @@ def load_report():
     }
 
 
+MEDAL_COLS = ["Rank", "School", "Code", "Gold", "Silver", "Bronze", "Total", "Sports", "Share"]
+POOL_COLS = ["Code", "Sport", "Events", "Medals", "PerEvent", "Share"]
+
+
+def medals_from_rows(rows: pd.DataFrame) -> pd.DataFrame:
+    """One row per university, counted from the medal rows that survived a filter."""
+    if rows.empty:
+        return pd.DataFrame(columns=MEDAL_COLS)
+    keep = rows["Slot"].astype(str).str.startswith(("gold", "silver", "bronze"))
+    rows = rows[keep]
+    if rows.empty:
+        return pd.DataFrame(columns=MEDAL_COLS)
+    out = []
+    for (code, school), grp in rows.groupby(["University code", "University"]):
+        slot = grp["Slot"].astype(str)
+        g = int(slot.str.startswith("gold").sum())
+        s = int(slot.str.startswith("silver").sum())
+        b = int(slot.str.startswith("bronze").sum())
+        out.append({
+            "School": school, "Code": code,
+            "Gold": g, "Silver": s, "Bronze": b, "Total": g + s + b,
+            "Sports": int(grp["Sport"].nunique()),
+        })
+    df = pd.DataFrame(out).sort_values(
+        ["Gold", "Silver", "Bronze"], ascending=False
+    ).reset_index(drop=True)
+    # standard competition ranking: ties share a place, the next place is skipped
+    ranks, previous, current = [], None, 0
+    for i, row in df.iterrows():
+        key = (row["Gold"], row["Silver"], row["Bronze"])
+        if key != previous:
+            current = i + 1
+            previous = key
+        ranks.append(current)
+    df["Rank"] = ranks
+    df["Share"] = (100 * df["Total"] / df["Total"].sum()).round(1)
+    return df[MEDAL_COLS]
+
+
+def pool_from_selection(medal_rows: pd.DataFrame, scope_events: pd.DataFrame,
+                        sports_map: dict) -> pd.DataFrame:
+    """Medals per sport against the events that were in scope for the selection.
+
+    The denominator is the official event count for the sport (or for the chosen
+    category), so a country filter lowers medals-per-event rather than inflating it.
+    """
+    if scope_events is None or scope_events.empty:
+        return pd.DataFrame(columns=POOL_COLS)
+    names = set(scope_events["Sport"].dropna())
+    if medal_rows is not None and not medal_rows.empty:
+        names |= set(medal_rows["Sport"].dropna())
+    if not names:
+        return pd.DataFrame(columns=POOL_COLS)
+    events = scope_events.groupby("Sport").size()
+    medals = (medal_rows.groupby("Sport").size() if medal_rows is not None and not medal_rows.empty
+              else pd.Series(dtype="int64"))
+    total = int(medals.sum()) if len(medals) else 0
+    codes = {v: k for k, v in sports_map.items()}
+    rows = []
+    for name in names:
+        e = int(events.get(name, 0))
+        m = int(medals.get(name, 0))
+        rows.append({
+            "Code": codes.get(name), "Sport": name, "Events": e, "Medals": m,
+            "PerEvent": round(m / e, 2) if e else 0,
+            "Share": round(100 * m / total, 1) if total else 0,
+        })
+    return pd.DataFrame(rows).reindex(columns=POOL_COLS).sort_values(
+        "Medals", ascending=False
+    ).reset_index(drop=True)
+
+
 @st.cache_data(ttl=300, show_spinner=False)
 def report_tables():
     """Reusable DataFrames for the Data page."""
@@ -487,17 +559,26 @@ def report_tables():
     results_raw = api_get("/results")
     out = {"error": None, "medal": rep["table"], "pool": rep["pool"], "rules": rep["rules"]}
     rows = []
+    events = []
     for e in results_raw.get("data", []):
+        events.append({
+            "Sport": e["sport"]["name"], "Code": e["sport"]["code"],
+            "Event": e.get("category"), "Gender": e.get("gender"),
+            "Kind": e.get("kind"), "Event ID": e.get("id"),
+            "Date (UTC)": (e.get("startsAt") or "")[:10],
+        })
         for m in (e.get("result") or {}).get("medals") or []:
             rows.append({
                 "Sport": e["sport"]["name"], "Event": e.get("category"),
                 "Gender": e.get("gender"), "Kind": e.get("kind"),
+                "Event ID": e.get("id"),
                 "Date (UTC)": (e.get("startsAt") or "")[:10],
                 "Slot": m.get("slot"), "University": m["university"]["name"],
                 "University code": m["university"]["code"],
                 "Athlete": m.get("athleteName") or "",
             })
     out["results"] = pd.DataFrame(rows)
+    out["events"] = pd.DataFrame(events)
     out["matches"] = rep["matches"]
     return out
 

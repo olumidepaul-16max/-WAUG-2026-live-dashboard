@@ -2,8 +2,8 @@
 WAUG 2026 — live dashboard page.
 
 Per-sport fixtures, results, standings and statistics from the AlliSports
-Data API. The only picture on the page is the thumbnail under the filters for
-the sport you pick.
+Data API. The page carries no imagery: the sidebar holds the filters and the
+numbers below follow them.
 """
 
 import os
@@ -97,7 +97,6 @@ st.markdown("""
 /* ================= FILTERS ================= */
 .filters-h { color:#fff; font-size:1.36rem; font-weight:800; letter-spacing:-.3px; margin:0 0 16px; }
 .filters-note { color:#9DB0DA; font-size:.79rem; line-height:1.55; margin:10px 0 14px; }
-.side-sport { text-align:center; font-weight:700; color:#E9EEFB; font-size:.9rem; margin:-4px 0 12px; }
 [data-testid="stSidebar"] .stSelectbox label p {
     color:#E9EEFB !important; font-size:.87rem !important; font-weight:600 !important;
 }
@@ -226,15 +225,6 @@ category = st.sidebar.selectbox("Category", categories)
 countries = ["All countries"] + country_codes
 country = st.sidebar.selectbox(
     "Country", countries, format_func=lambda c: COUNTRY_LABEL.get(c, c),
-)
-
-thumb = asset("thumb", f"{selected_code}.jpg")
-if thumb:
-    st.sidebar.image(thumb, use_container_width=True)
-st.sidebar.markdown(
-    f'<div class="side-sport">{SPORT_EMOJI.get(selected_code, "🏅")} '
-    f'{sports_map.get(selected_code, selected_code)}</div>',
-    unsafe_allow_html=True,
 )
 
 st.sidebar.markdown(
